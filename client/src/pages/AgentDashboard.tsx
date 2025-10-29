@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,44 +8,122 @@ import { Card } from "@/components/ui/card";
 import FarmerCard from "@/components/FarmerCard";
 import { calculateDownPayment, formatCurrency } from "@shared/logic/paymentUtils";
 import { Search, LogOut, Plus, Sprout } from "lucide-react";
+import { logout } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
-// todo: remove mock functionality
-const mockFarmers = [
-  { id: "1", farmerId: "F2025001", name: "Mary Wanjiku", phone: "+254 712 345 678" },
-  { id: "2", farmerId: "F2025002", name: "James Mwangi", phone: "+254 723 456 789" },
-  { id: "3", farmerId: "F2025003", name: "Grace Akinyi", phone: "+254 734 567 890" },
-];
+interface Farmer {
+  id: string;
+  farmerId: string;
+  name: string;
+  phone: string;
+}
 
 export default function AgentDashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [selectedFarmer, setSelectedFarmer] = useState<typeof mockFarmers[0] | null>(null);
+  const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
   const [totalCost, setTotalCost] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  const searchMutation = useMutation({
+    mutationFn: async (query: string) => {
+      const res = await fetch(`/api/farmers/search?query=${encodeURIComponent(query)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSelectedFarmer(data.farmer);
+      setShowOrderForm(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Farmer not found",
+        description: "No farmer found with that phone or ID",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createOrderMutation = useMutation({
+    mutationFn: async (orderData: any) => {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(orderData),
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Failed to create order";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order created successfully",
+        description: "The order has been submitted for approval",
+      });
+      setShowOrderForm(false);
+      setSelectedFarmer(null);
+      setTotalCost("");
+      setDueDate("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create order",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const downPayment = totalCost ? calculateDownPayment(parseFloat(totalCost)) : 0;
   const balance = totalCost ? parseFloat(totalCost) - downPayment : 0;
 
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Enter search query",
+        description: "Please enter a phone number or farmer ID",
+        variant: "destructive",
+      });
+      return;
+    }
+    searchMutation.mutate(searchQuery);
+  };
+
   const handleCreateOrder = () => {
-    console.log('Create order:', {
-      farmer: selectedFarmer,
-      totalCost: parseFloat(totalCost),
-      downPayment,
-      balance,
+    if (!selectedFarmer || !totalCost || !dueDate) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createOrderMutation.mutate({
+      farmerId: selectedFarmer.id,
+      totalCost: parseFloat(totalCost).toFixed(2),
+      downPayment: downPayment.toFixed(2),
+      dueDate,
     });
-    // todo: remove mock functionality - implement actual order creation
-    setShowOrderForm(false);
-    setSelectedFarmer(null);
-    setTotalCost("");
   };
 
-  const handleSelectFarmer = (farmer: typeof mockFarmers[0]) => {
-    setSelectedFarmer(farmer);
-    setShowOrderForm(true);
-  };
-
-  const handleLogout = () => {
-    console.log('Logout clicked');
+  const handleLogout = async () => {
+    await logout();
     setLocation('/');
   };
 
@@ -82,28 +161,26 @@ export default function AgentDashboard() {
               <h2 className="text-2xl font-bold">Find Farmer</h2>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by phone number or farmer ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by phone number or farmer ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10"
+                  data-testid="input-search"
+                />
+              </div>
+              <Button onClick={handleSearch} disabled={searchMutation.isPending} data-testid="button-search">
+                {searchMutation.isPending ? "Searching..." : "Search"}
+              </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockFarmers.map((farmer) => (
-                <FarmerCard
-                  key={farmer.id}
-                  farmerId={farmer.farmerId}
-                  name={farmer.name}
-                  phone={farmer.phone}
-                  onSelect={() => handleSelectFarmer(farmer)}
-                />
-              ))}
+            <div className="text-center py-12 text-muted-foreground">
+              Enter a farmer's phone number or ID to search
             </div>
           </div>
         ) : (
@@ -116,6 +193,7 @@ export default function AgentDashboard() {
                   setShowOrderForm(false);
                   setSelectedFarmer(null);
                   setTotalCost("");
+                  setDueDate("");
                 }}
                 data-testid="button-cancel"
               >
@@ -158,6 +236,17 @@ export default function AgentDashboard() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  data-testid="input-due-date"
+                />
+              </div>
+
               {totalCost && parseFloat(totalCost) > 0 && (
                 <div className="p-4 rounded-lg bg-muted/50 space-y-3">
                   <div className="flex justify-between">
@@ -178,11 +267,11 @@ export default function AgentDashboard() {
               <Button
                 className="w-full"
                 onClick={handleCreateOrder}
-                disabled={!totalCost || parseFloat(totalCost) <= 0}
+                disabled={!totalCost || parseFloat(totalCost) <= 0 || !dueDate || createOrderMutation.isPending}
                 data-testid="button-create-order"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Order
+                {createOrderMutation.isPending ? "Creating..." : "Create Order"}
               </Button>
             </Card>
           </div>

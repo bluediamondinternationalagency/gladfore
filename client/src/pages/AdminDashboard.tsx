@@ -1,66 +1,123 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StatsCard from "@/components/StatsCard";
 import OrderCard from "@/components/OrderCard";
-import { DollarSign, TrendingUp, Users, Upload, Search, LogOut } from "lucide-react";
-import { Sprout } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Upload, Search, LogOut, Sprout } from "lucide-react";
+import { logout } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import { formatCurrency } from "@shared/logic/paymentUtils";
 
-// todo: remove mock functionality
-const mockOrders = [
-  {
-    id: "1",
-    farmerName: "John Kamau",
-    totalCost: 50000,
-    downPayment: 25000,
-    balance: 25000,
-    status: "pending" as const,
-    dueDate: new Date('2025-12-31'),
-  },
-  {
-    id: "2",
-    farmerName: "Mary Wanjiku",
-    totalCost: 75000,
-    downPayment: 37500,
-    balance: 37500,
-    status: "approved" as const,
-    dueDate: new Date('2025-11-15'),
-  },
-  {
-    id: "3",
-    farmerName: "Peter Ochieng",
-    totalCost: 100000,
-    downPayment: 50000,
-    balance: 50000,
-    status: "pending" as const,
-    dueDate: new Date('2025-10-30'),
-  },
-];
+interface Order {
+  id: string;
+  farmerId: string;
+  agentId: string;
+  totalCost: string;
+  downPayment: string;
+  balance: string;
+  status: "pending" | "approved" | "rejected";
+  dueDate: string;
+  createdAt: string;
+}
+
+interface Stats {
+  totalDownPayments: number;
+  totalPendingDebts: number;
+  totalOrders: number;
+  pendingOrders: number;
+}
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [csvDialogOpen, setCSVDialogOpen] = useState(false);
+  const [csvData, setCSVData] = useState("");
 
-  const handleUploadCSV = () => {
-    console.log('Upload CSV clicked');
-    // todo: remove mock functionality - implement actual CSV upload
-  };
+  const { data: ordersData } = useQuery<{ orders: Order[] }>({
+    queryKey: ["/api/orders/pending"],
+  });
 
-  const handleApprove = (orderId: string) => {
-    console.log('Approve order:', orderId);
-    // todo: remove mock functionality - implement actual approval
-  };
+  const { data: statsData } = useQuery<Stats>({
+    queryKey: ["/api/stats"],
+  });
 
-  const handleReject = (orderId: string) => {
-    console.log('Reject order:', orderId);
-    // todo: remove mock functionality - implement actual rejection
-  };
+  const uploadCSVMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      const res = await fetch("/api/farmers/upload-csv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ csvData }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: `Uploaded ${data.count} farmers successfully`,
+      });
+      setCSVDialogOpen(false);
+      setCSVData("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
-  const handleLogout = () => {
-    console.log('Logout clicked');
+  const approveMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await fetch(`/api/orders/${orderId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments: "Approved" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Order approved successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await fetch(`/api/orders/${orderId}/reject`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ comments: "Rejected" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Order rejected" });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    },
+  });
+
+  const handleLogout = async () => {
+    await logout();
     setLocation('/');
   };
+
+  const orders = ordersData?.orders || [];
+  const stats = statsData || { totalDownPayments: 0, totalPendingDebts: 0, totalOrders: 0, pendingOrders: 0 };
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,29 +150,25 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatsCard
             title="Total Down Payments"
-            value="KES 2.5M"
+            value={formatCurrency(stats.totalDownPayments)}
             icon={DollarSign}
-            trend="+12.5% from last month"
-            trendUp={true}
           />
           <StatsCard
             title="Total Pending Debts"
-            value="KES 1.8M"
+            value={formatCurrency(stats.totalPendingDebts)}
             icon={TrendingUp}
           />
           <StatsCard
-            title="Active Farmers"
-            value="1,247"
+            title="Pending Orders"
+            value={stats.pendingOrders.toString()}
             icon={Users}
-            trend="+28 this week"
-            trendUp={true}
           />
         </div>
 
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <h2 className="text-2xl font-bold">Pending Orders</h2>
-            <Button onClick={handleUploadCSV} data-testid="button-upload-csv">
+            <Button onClick={() => setCSVDialogOpen(true)} data-testid="button-upload-csv">
               <Upload className="w-4 h-4 mr-2" />
               Upload Farmers CSV
             </Button>
@@ -133,25 +186,61 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                orderId={order.id}
-                farmerName={order.farmerName}
-                totalCost={order.totalCost}
-                downPayment={order.downPayment}
-                balance={order.balance}
-                status={order.status}
-                dueDate={order.dueDate}
-                showActions={true}
-                onApprove={() => handleApprove(order.id)}
-                onReject={() => handleReject(order.id)}
-              />
-            ))}
-          </div>
+          {orders.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No pending orders at the moment
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  orderId={order.id}
+                  farmerName={`Farmer #${order.farmerId.slice(0, 8)}`}
+                  totalCost={order.totalCost}
+                  downPayment={order.downPayment}
+                  balance={order.balance}
+                  status={order.status}
+                  dueDate={order.dueDate}
+                  showActions={true}
+                  onApprove={() => approveMutation.mutate(order.id)}
+                  onReject={() => rejectMutation.mutate(order.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
+
+      <Dialog open={csvDialogOpen} onOpenChange={setCSVDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Farmers CSV</DialogTitle>
+            <DialogDescription>
+              Paste CSV data with columns: farmer_id, name, phone
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="farmer_id,name,phone&#10;F2025001,John Kamau,+254712345678&#10;F2025002,Mary Wanjiku,+254723456789"
+            value={csvData}
+            onChange={(e) => setCSVData(e.target.value)}
+            rows={10}
+            data-testid="input-csv"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCSVDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => uploadCSVMutation.mutate(csvData)}
+              disabled={uploadCSVMutation.isPending || !csvData}
+              data-testid="button-submit-csv"
+            >
+              {uploadCSVMutation.isPending ? "Uploading..." : "Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,41 +1,41 @@
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import OrderCard from "@/components/OrderCard";
 import StatsCard from "@/components/StatsCard";
 import { DollarSign, Clock, LogOut, Sprout } from "lucide-react";
+import { logout } from "@/lib/auth";
+import { formatCurrency } from "@shared/logic/paymentUtils";
 
-// todo: remove mock functionality
-const mockOrders = [
-  {
-    id: "1",
-    farmerName: "Current User",
-    totalCost: 50000,
-    downPayment: 25000,
-    balance: 25000,
-    status: "approved" as const,
-    dueDate: new Date('2025-12-31'),
-  },
-  {
-    id: "2",
-    farmerName: "Current User",
-    totalCost: 75000,
-    downPayment: 37500,
-    balance: 37500,
-    status: "pending" as const,
-    dueDate: new Date('2025-11-15'),
-  },
-];
+interface Order {
+  id: string;
+  farmerId: string;
+  agentId: string;
+  totalCost: string;
+  downPayment: string;
+  balance: string;
+  status: "pending" | "approved" | "rejected";
+  dueDate: string;
+  createdAt: string;
+}
 
 export default function FarmerDashboard() {
   const [, setLocation] = useLocation();
 
-  const handleLogout = () => {
-    console.log('Logout clicked');
+  const { data: ordersData } = useQuery<{ orders: Order[] }>({
+    queryKey: ["/api/orders"],
+  });
+
+  const handleLogout = async () => {
+    await logout();
     setLocation('/');
   };
 
-  const totalBalance = mockOrders.reduce((sum, order) => sum + parseFloat(order.balance.toString()), 0);
-  const totalPaid = mockOrders.reduce((sum, order) => sum + parseFloat(order.downPayment.toString()), 0);
+  const orders = ordersData?.orders || [];
+  const totalBalance = orders
+    .filter(o => o.status === "approved")
+    .reduce((sum, order) => sum + parseFloat(order.balance.toString()), 0);
+  const totalPaid = orders.reduce((sum, order) => sum + parseFloat(order.downPayment.toString()), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,12 +68,12 @@ export default function FarmerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <StatsCard
             title="Total Paid"
-            value={`KES ${(totalPaid / 1000).toFixed(1)}K`}
+            value={formatCurrency(totalPaid)}
             icon={DollarSign}
           />
           <StatsCard
             title="Outstanding Balance"
-            value={`KES ${(totalBalance / 1000).toFixed(1)}K`}
+            value={formatCurrency(totalBalance)}
             icon={Clock}
           />
         </div>
@@ -81,21 +81,27 @@ export default function FarmerDashboard() {
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Order History</h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                orderId={order.id}
-                farmerName={order.farmerName}
-                totalCost={order.totalCost}
-                downPayment={order.downPayment}
-                balance={order.balance}
-                status={order.status}
-                dueDate={order.dueDate}
-                showActions={false}
-              />
-            ))}
-          </div>
+          {orders.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No orders yet. Contact your agent to create an order.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  orderId={order.id}
+                  farmerName="My Order"
+                  totalCost={order.totalCost}
+                  downPayment={order.downPayment}
+                  balance={order.balance}
+                  status={order.status}
+                  dueDate={order.dueDate}
+                  showActions={false}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

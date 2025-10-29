@@ -1,21 +1,50 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { Sprout } from "lucide-react";
+import { login } from "@/lib/auth";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [activeRole, setActiveRole] = useState<"farmer" | "agent" | "admin">("farmer");
 
-  // todo: remove mock functionality
-  const handleLogin = (role: string) => {
-    console.log(`Logging in as ${role}:`, { phone, password });
-    setLocation(`/${role}`);
+  const loginMutation = useMutation({
+    mutationFn: () => login(phone, password),
+    onSuccess: (user) => {
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.name}!`,
+      });
+      setLocation(`/${user.role}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Login failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogin = () => {
+    if (!phone || !password) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both phone and password",
+        variant: "destructive",
+      });
+      return;
+    }
+    loginMutation.mutate();
   };
 
   return (
@@ -30,7 +59,7 @@ export default function LoginPage() {
         </div>
 
         <Card className="p-6">
-          <Tabs defaultValue="farmer" className="w-full">
+          <Tabs value={activeRole} onValueChange={(v) => setActiveRole(v as any)} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="farmer" data-testid="tab-farmer">Farmer</TabsTrigger>
               <TabsTrigger value="agent" data-testid="tab-agent">Agent</TabsTrigger>
@@ -48,6 +77,7 @@ export default function LoginPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     data-testid="input-phone"
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   />
                 </div>
 
@@ -60,22 +90,24 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     data-testid="input-password"
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   />
                 </div>
 
                 <Button
                   className="w-full"
-                  onClick={() => handleLogin(role)}
+                  onClick={handleLogin}
+                  disabled={loginMutation.isPending}
                   data-testid="button-login"
                 >
-                  Sign In as {role.charAt(0).toUpperCase() + role.slice(1)}
+                  {loginMutation.isPending ? "Signing in..." : `Sign In as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
                 </Button>
 
                 {role === "farmer" && (
                   <p className="text-sm text-center text-muted-foreground">
                     Don't have an account?{" "}
                     <button className="text-primary hover:underline" onClick={() => console.log('Sign up clicked')}>
-                      Sign up
+                      Contact your agent
                     </button>
                   </p>
                 )}
