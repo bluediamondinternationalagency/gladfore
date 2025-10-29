@@ -1,0 +1,204 @@
+A simple, high-converting landing page will make your Gladfore MVP look professional and attract early users or partners (like cooperatives, agents, or donors).
+
+Here’s your updated Gladfore MVP project prompt, now including the serverless setup and a conversion-optimized landing page.
+You can use this for development planning or as a brief for your team or README.
+
+🌾 Project Goal & Context (Serverless + Landing Page Version)
+
+Develop the Minimum Viable Product (MVP) web application named Gladfore, designed to digitize the onboarding and fertilizer credit process for farmers.
+The application will be fully serverless, deployed on Netlify, and powered by Supabase for backend services (database, authentication, and API logic).
+It must serve Admin, Agent, and Farmer roles, implement mobile-first design, and include a simple, persuasive landing page to drive sign-ups and user engagement.
+
+⚙️ Technology Stack & Architecture
+Frontend
+
+React (Vite) — for fast builds and SPA routing.
+
+TypeScript — type-safe logic and shared utilities.
+
+Tailwind CSS — responsive, mobile-first UI styling.
+
+React Router — client-side routing for pages and role dashboards.
+
+Netlify — deployment and hosting with built-in serverless functions.
+
+Backend & Database
+
+Supabase (PostgreSQL) — database, authentication, file storage.
+
+Supabase Edge Functions — secure business logic and data operations.
+
+Netlify Functions — optional API endpoints or middleware.
+
+Row-Level Security (RLS) — enforces user-specific data access.
+
+🌐 System Architecture
+
+100% serverless — no Express or long-running backend server.
+
+Architecture pattern: Frontend + Supabase + Netlify Functions.
+
+Static assets served from Netlify CDN, dynamic logic from Supabase and functions.
+
+🧠 Core MVP User Stories (Must-Haves)
+Admin
+
+Features
+
+Farmer Data Upload & Management
+
+Order Approval Workflow
+
+Reporting Dashboard
+
+Acceptance Criteria
+
+Upload CSV of qualified farmers (Name, Phone, ID) via a Supabase insert function.
+
+View and manage pending orders showing 50% down payment status.
+
+Approve or reject orders with comments.
+
+View dashboard summaries:
+
+Total Down Payments Collected
+
+Total Pending Debts
+
+Agent
+
+Features
+
+Secure Login (Supabase Auth)
+
+Farmer Lookup & Link
+
+New Order Creation
+
+50% Down Payment Recording
+
+Acceptance Criteria
+
+Login using Agent ID/password (Supabase Auth).
+
+Search existing farmer by phone number or ID.
+
+Create order form showing total cost and calculated 50% down payment.
+
+Strictly validate that payment = 50% of cost before submission.
+
+Save order and payment data to Supabase with audit log.
+
+Farmer
+
+Features
+
+Simple Login (OTP/Phone Number)
+
+View Orders & Repayment Status
+
+Acceptance Criteria
+
+Login using registered phone number or ID (Supabase Auth / OTP).
+
+View past/current orders and repayment progress.
+
+See due dates and outstanding 50% balance.
+
+🎨 Design & UX
+Mobile-First Approach
+
+All layouts designed for small screens first (≤ 480px).
+
+Use responsive Tailwind utilities for scaling to tablet/desktop.
+
+Prioritize simple navigation (hamburger or bottom nav).
+
+Emphasize vertical scroll and large touch targets.
+
+Shared Component Library
+
+Place reusable components (buttons, forms, modals, cards) in /shared/ui/.
+
+Components built in TypeScript and styled with Tailwind.
+
+Logic and state management isolated in /shared/logic/.
+
+🧮 Business Logic Isolation
+
+Place reusable logic (cost calculations, payment validation, etc.) in a shared TypeScript file:
+
+/shared/logic/paymentUtils.ts
+
+
+Used in both web app and future React Native mobile app.
+
+💾 Data & Security
+
+All database operations through Supabase Edge Functions or Row-Level Security policies.
+
+Farmers: can only view their own data.
+
+Agents: see linked farmers.
+
+Admins: full data access with elevated roles.
+
+💡 Landing Page Requirements
+Purpose
+
+Convert visitors into interested users or partners (farmers, agents, or investors).
+
+Structure
+
+Hero Section
+
+Headline: “Empowering Farmers with Access to Fertilizer Credit.”
+
+Subtext: One-line description — “Gladfore helps farmers get fertilizers faster by paying only 50% upfront.”
+
+CTA Button: “Get Started” → opens registration/login modal.
+
+Background: Subtle image of farmers or green field (light gradient overlay).
+
+How It Works
+
+3 simple steps:
+
+Register as a Farmer or Agent
+
+Make 50% Down Payment
+
+Get Fertilizer & Pay Balance Later
+
+Why Choose Gladfore
+
+Secure (Supabase Auth)
+
+Transparent (track payments & approvals)
+
+Fast (mobile-first experience)
+
+Call-to-Action (Footer)
+
+“Join the movement to empower farmers.”
+
+Buttons: Sign Up as Farmer | Sign Up as Agent
+
+Technical Setup
+
+Route: / → Landing Page
+
+React Router routes:
+
+<Routes>
+  <Route path="/" element={<LandingPage />} />
+  <Route path="/login" element={<LoginPage />} />
+  <Route path="/admin/*" element={<AdminDashboard />} />
+  <Route path="/agent/*" element={<AgentDashboard />} />
+  <Route path="/farmer/*" element={<FarmerDashboard />} />
+</Routes>
+
+
+Store the landing page in:
+
+client/src/pages/LandingPage.tsx
