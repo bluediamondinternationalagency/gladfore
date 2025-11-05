@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build:frontend"
+  publish = "dist"
+
+# Redirect React routes to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

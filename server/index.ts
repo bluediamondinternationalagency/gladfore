@@ -1,34 +1,45 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { createClient } from "@supabase/supabase-js";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Initialize Express
 const app = express();
 
-declare module 'http' {
+// Create Supabase client
+export const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Define session storage (memory store for simplicity on Netlify)
+const MemoryStore = session.MemoryStore;
+
+// Extend IncomingMessage to include rawBody for webhook verification
+declare module "http" {
   interface IncomingMessage {
-    rawBody: unknown
+    rawBody: unknown;
   }
 }
 
-const PgStore = connectPg(session);
-
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+// Body parsing middleware
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: false }));
 
+// Session middleware
 app.use(
   session({
-    store: new PgStore({
-      pool,
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET || "gladfore-secret-key-change-in-production",
+    store: new MemoryStore(),
+    secret:
+      process.env.SESSION_SECRET ||
+      "gladfore-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -40,6 +51,7 @@ app.use(
   })
 );
 
+// Request logger for API routes
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -71,8 +83,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Register your routes (ensure they import and use `supabase`)
   const server = await registerRoutes(app);
 
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -81,25 +95,23 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Vite setup (Dev vs Production)
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  // Define port (Netlify and local)
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    }
+  );
 })();
