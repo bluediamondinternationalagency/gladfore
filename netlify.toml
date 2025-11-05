@@ -5,10 +5,9 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["netlify/functions/**"]
 
   [functions.node_bundler]
-    format = "esm" # enables ES module support for top-level await and import.meta
+    format = "esm"
 
 [[redirects]]
   from = "/*"
