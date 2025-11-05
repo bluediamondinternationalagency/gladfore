@@ -6,7 +6,6 @@
 # Functions settings
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
 
 # Node bundler settings for Netlify Functions
 [functions.node_bundler]
