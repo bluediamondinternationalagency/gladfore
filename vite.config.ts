@@ -5,12 +5,11 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { devBanner } from "@replit/vite-plugin-dev-banner";
 import { cartographer } from "@replit/vite-plugin-cartographer";
 
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
+    ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
       ? [cartographer(), devBanner()]
       : []),
   ],
@@ -32,4 +31,4 @@ export default defineConfig(async () => ({
       deny: ["**/.*"],
     },
   },
-}));
+});
