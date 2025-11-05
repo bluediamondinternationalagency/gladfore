@@ -5,9 +5,9 @@
 
 [functions]
   node_bundler = "esbuild"
-
-  [functions.node_bundler]
-    format = "esm"
+  external_node_modules = []
+  included_files = ["dist/public/**"]
+  format = "esm"
 
 [[redirects]]
   from = "/*"
