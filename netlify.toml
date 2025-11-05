@@ -1,17 +1,19 @@
+# Build settings
 [build]
   command = "npm run build"
   publish = "dist/public"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Functions settings
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-[functions.environment]
-  NODE_ENV = "production"
-
+# Node bundler settings for Netlify Functions
 [functions.node_bundler]
   external_node_modules = ["express", "express-session", "bcryptjs"]
+
+# Redirect all routes to index.html (for SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
