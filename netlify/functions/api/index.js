@@ -74,7 +74,7 @@ function requireRole(...roles) {
   };
 }
 async function registerRoutes(app2) {
-  app2.post("/api/auth/register", async (req, res) => {
+  app2.post("/auth/register", async (req, res) => {
     try {
       const data = insertUserSchema.parse(req.body);
       const { data: existingUser, error: existingError } = await supabase.from("users").select("*").eq("phone", data.phone).single();
@@ -103,7 +103,7 @@ async function registerRoutes(app2) {
       res.status(400).json({ error: error.message });
     }
   });
-  app2.post("/api/auth/login", async (req, res) => {
+  app2.post("/auth/login", async (req, res) => {
     try {
       const { phone, password } = req.body;
       const { data: user, error } = await supabase.from("users").select("*").eq("phone", phone).single();
@@ -128,10 +128,10 @@ async function registerRoutes(app2) {
       res.status(400).json({ error: error.message });
     }
   });
-  app2.post("/api/auth/logout", (req, res) => {
+  app2.post("/auth/logout", (req, res) => {
     req.session.destroy(() => res.json({ success: true }));
   });
-  app2.get("/api/auth/me", requireAuth, async (req, res) => {
+  app2.get("/auth/me", requireAuth, async (req, res) => {
     try {
       const { data: user, error } = await supabase.from("users").select("*").eq("id", req.session.userId).single();
       if (!user) return res.status(404).json({ error: "User not found" });
@@ -149,7 +149,7 @@ async function registerRoutes(app2) {
     }
   });
   app2.post(
-    "/api/farmers/upload-csv",
+    "/farmers/upload-csv",
     requireAuth,
     requireRole("admin"),
     async (req, res) => {
@@ -178,7 +178,7 @@ async function registerRoutes(app2) {
     }
   );
   app2.get(
-    "/api/farmers/search",
+    "/farmers/search",
     requireAuth,
     requireRole("agent", "admin"),
     async (req, res) => {
@@ -198,7 +198,7 @@ async function registerRoutes(app2) {
     }
   );
   app2.get(
-    "/api/farmers",
+    "/farmers",
     requireAuth,
     requireRole("agent", "admin"),
     async (req, res) => {
@@ -220,7 +220,7 @@ async function registerRoutes(app2) {
     }
   );
   app2.post(
-    "/api/orders",
+    "/orders",
     requireAuth,
     requireRole("agent"),
     async (req, res) => {
@@ -250,7 +250,7 @@ async function registerRoutes(app2) {
       }
     }
   );
-  app2.get("/api/orders", requireAuth, async (req, res) => {
+  app2.get("/orders", requireAuth, async (req, res) => {
     try {
       let orders2 = [];
       if (req.session.role === "admin") {
