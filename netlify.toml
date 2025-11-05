@@ -1,10 +1,13 @@
 [build]
   command = "npm run build"
   publish = "dist/public"
+  functions = "netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
   external_node_modules = []
+  included_files = ["netlify/functions/**"]
+  node_module_format = "esm"  # tells Netlify your functions use ES modules
 
 [[redirects]]
   from = "/*"
