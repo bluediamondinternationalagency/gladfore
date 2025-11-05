@@ -6,7 +6,7 @@ export default function StatsCardExample() {
     <div className="p-8 space-y-4">
       <StatsCard
         title="Total Revenue"
-        value="KES 2.5M"
+        value="₦ 2.5M"
         icon={DollarSign}
         trend="+12.5% from last month"
         trendUp={true}

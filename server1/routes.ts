@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcryptjs";
 import Papa from "papaparse";
 import { z } from "zod";
-import { supabase } from "./supabaseClient"; // your initialized Supabase client
+import { supabase } from "../client/src/lib/supabaseClient"; // your initialized Supabase client
 import {
   insertUserSchema,
   insertFarmerSchema,

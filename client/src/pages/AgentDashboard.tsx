@@ -225,7 +225,7 @@ export default function AgentDashboard() {
               <h3 className="font-semibold">Order Information</h3>
 
               <div className="space-y-2">
-                <Label htmlFor="totalCost">Total Cost (KES)</Label>
+                <Label htmlFor="totalCost">Total Cost (₦)</Label>
                 <Input
                   id="totalCost"
                   type="number"

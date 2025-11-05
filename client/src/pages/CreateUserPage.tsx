@@ -1,4 +1,4 @@
-// client/src/pages/LoginPage.tsx
+// client/src/pages/CreateUserPage.tsx
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -9,43 +9,45 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Sprout } from "lucide-react";
-import { login } from "@/lib/auth";
+import { register } from "@/lib/auth";
 
-export default function LoginPage() {
+export default function CreateUserPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [identifier, setIdentifier] = useState(""); // phone or email
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [activeRole, setActiveRole] = useState<"farmer" | "agent" | "admin">("farmer");
 
-  const loginMutation = useMutation({
-    mutationFn: () => login(identifier, password),
+  const createUserMutation = useMutation({
+    mutationFn: () => register({ phone, password, role: activeRole, name }),
     onSuccess: (user) => {
       toast({
-        title: "Login successful",
-        description: `Welcome back, ${user.name}!`,
+        title: "User created successfully",
+        description: `User ${user.name} (${user.role}) has been created.`,
       });
+      // Navigate to user's page or clear form
       setLocation(`/${user.role}`);
     },
     onError: (error: any) => {
       toast({
-        title: "Login failed",
-        description: error.message || "Invalid credentials",
+        title: "Creation failed",
+        description: error.message || "Could not create user",
         variant: "destructive",
       });
     },
   });
 
-  const handleLogin = () => {
-    if (!identifier || !password) {
+  const handleCreateUser = () => {
+    if (!phone || !name || !password) {
       toast({
         title: "Missing information",
-        description: "Please enter both phone/email and password",
+        description: "Please fill all fields",
         variant: "destructive",
       });
       return;
     }
-    loginMutation.mutate();
+    createUserMutation.mutate();
   };
 
   return (
@@ -55,8 +57,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Sprout className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold font-display mb-2">Welcome to Gladfore</h1>
-          <p className="text-muted-foreground">Sign in to continue</p>
+          <h1 className="text-3xl font-bold font-display mb-2">Create New User</h1>
+          <p className="text-muted-foreground">Fill in the details to add a new user</p>
         </div>
 
         <Card className="p-6">
@@ -70,14 +72,24 @@ export default function LoginPage() {
             {["farmer", "agent", "admin"].map((role) => (
               <TabsContent key={role} value={role} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor={`${role}-identifier`}>Email or Phone</Label>
+                  <Label htmlFor={`${role}-phone`}>Phone Number</Label>
                   <Input
-                    id={`${role}-identifier`}
+                    id={`${role}-phone`}
+                    type="tel"
+                    placeholder="+234 701 234 5678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`${role}-name`}>Full Name</Label>
+                  <Input
+                    id={`${role}-name`}
                     type="text"
-                    placeholder="Email or Phone"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                   />
                 </div>
 
@@ -86,29 +98,21 @@ export default function LoginPage() {
                   <Input
                     id={`${role}-password`}
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   />
                 </div>
 
                 <Button
                   className="w-full"
-                  onClick={handleLogin}
-                  disabled={loginMutation.isPending}
+                  onClick={handleCreateUser}
+                  disabled={createUserMutation.isPending}
                 >
-                  {loginMutation.isPending ? "Signing in..." : `Sign In as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
+                  {createUserMutation.isPending
+                    ? "Creating..."
+                    : `Create ${role.charAt(0).toUpperCase() + role.slice(1)}`}
                 </Button>
-
-                {role === "farmer" && (
-                  <p className="text-sm text-center text-muted-foreground">
-                    Don't have an account?{" "}
-                    <button className="text-primary hover:underline" onClick={() => console.log('Sign up clicked')}>
-                      Contact your agent
-                    </button>
-                  </p>
-                )}
               </TabsContent>
             ))}
           </Tabs>

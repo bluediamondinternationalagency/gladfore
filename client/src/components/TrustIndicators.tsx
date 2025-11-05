@@ -1,7 +1,7 @@
 const stats = [
   { value: "1,000+", label: "Farmers Served" },
   { value: "98%", label: "Approval Rate" },
-  { value: "KES 50M+", label: "Credit Disbursed" },
+  { value: "₦ 50M+", label: "Credit Disbursed" },
   { value: "24/7", label: "Support Available" },
 ];
 
