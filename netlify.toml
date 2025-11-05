@@ -1,6 +1,13 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  format = "esm"
+  external_node_modules = []
+  included_files = ["netlify/functions/**"]
 
 # Redirect React routes to index.html
 [[redirects]]
