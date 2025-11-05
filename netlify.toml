@@ -6,3 +6,12 @@
   from = "/*"
   to = "/index.html"
   status = 200
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions.environment]
+  NODE_ENV = "production"
+
+[functions.node_bundler]
+  external_node_modules = ["express", "express-session", "bcryptjs"]
