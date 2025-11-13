@@ -1,7 +1,9 @@
+// AdminDashboard.tsx
+
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
@@ -47,10 +49,16 @@ interface AdminStats {
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
 
+  // -------------------------------------------------------------------------
+  // 🔧 CHANGED: You MUST fetch from Netlify Functions, not "/api/admin-stats"
+  // -------------------------------------------------------------------------
   const { data: statsData, isLoading } = useQuery<{ stats: AdminStats }>({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/admin-stats");
+      const response = await fetch("/.netlify/functions/admin-stats", {
+        credentials: "include", // ✅ FIX: ensures cookies/sessions are included
+      });
+
       if (!response.ok) throw new Error("Failed to fetch stats");
       return response.json();
     },
@@ -93,8 +101,11 @@ export default function AdminDashboard() {
       </header>
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-6 py-8">
+        
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+          {/* Total Farmers */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Farmers</CardTitle>
@@ -109,6 +120,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Total Agents */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
@@ -116,12 +128,11 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalAgents || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Active agents in the field
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Active agents in the field</p>
             </CardContent>
           </Card>
 
+          {/* Pending KYC */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
@@ -135,6 +146,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Active Orders */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
@@ -148,6 +160,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Total Revenue */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -163,6 +176,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Outstanding */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
@@ -172,12 +186,11 @@ export default function AdminDashboard() {
               <div className="text-2xl font-bold">
                 {formatCurrency(parseFloat(stats?.totalOutstanding || "0"))}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pending collections
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Pending collections</p>
             </CardContent>
           </Card>
 
+          {/* Collection Rate */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
@@ -191,6 +204,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Default Rate */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Default Rate</CardTitle>
@@ -200,9 +214,7 @@ export default function AdminDashboard() {
               <div className="text-2xl font-bold text-destructive">
                 {stats?.defaultRate || 0}%
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Overdue payments
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Overdue payments</p>
             </CardContent>
           </Card>
         </div>
