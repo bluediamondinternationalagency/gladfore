@@ -103,7 +103,7 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ 
         error: "Failed to fetch farmers",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined
       }),
     };
