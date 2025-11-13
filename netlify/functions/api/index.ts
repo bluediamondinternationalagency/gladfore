@@ -35,7 +35,8 @@ const farmers = pgTable("farmers", {
   farmerId: text("farmer_id").notNull().unique(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
-  agentId: varchar("agent_id").references(() => users.id)
+  agentId: varchar("agent_id").references(() => users.id),
+  status: text("status").default("active")
 });
 
 const orders = pgTable("orders", {
@@ -111,6 +112,8 @@ function requireRole(...roles: string[]) {
 // ------------------------
 // Routes
 // ------------------------
+
+// --- Auth ---
 app.post("/auth/register", async (req: any, res: any) => {
   try {
     const data = insertUserSchema.parse(req.body);
@@ -186,9 +189,7 @@ app.get("/auth/me", requireAuth, async (req: any, res: any) => {
   }
 });
 
-// ------------------------
-// Farmers CSV Upload
-// ------------------------
+// --- Farmers CSV Upload ---
 app.post("/farmers/upload-csv", requireAuth, requireRole("admin"), async (req: any, res: any) => {
   try {
     const { csvData } = req.body;
@@ -214,9 +215,49 @@ app.post("/farmers/upload-csv", requireAuth, requireRole("admin"), async (req: a
   }
 });
 
-// ------------------------
-// Other farmer/order routes omitted for brevity (same as your original code)
-// ------------------------
+// --- Admin Stats ---
+app.get("/admin/stats", requireAuth, requireRole("admin"), async (req: any, res: any) => {
+  try {
+    const { count: totalFarmers } = await supabase.from("farmers").select("*", { count: "exact", head: true });
+    const { count: activeFarmers } = await supabase.from("farmers").select("*", { count: "exact", head: true }).eq("status", "active");
+    const { count: blacklistedFarmers } = await supabase.from("farmers").select("*", { count: "exact", head: true }).eq("status", "blacklisted");
+    const { count: totalAgents } = await supabase.from("users").select("*", { count: "exact", head: true }).eq("role", "agent");
+    const { count: activeOrders } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "approved");
+    const { count: pendingOrders } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending");
+
+    const { data: payments } = await supabase.from("payments").select("amount, status");
+
+    const totalCollected = payments?.filter((p) => p.status === "paid").reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    const totalOutstanding = payments?.filter((p) => p.status === "pending").reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    const totalRevenue = totalCollected + totalOutstanding;
+    const collectionRate = totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0;
+    const defaultRate = totalRevenue > 0 ? Math.round((totalOutstanding / totalRevenue) * 100) : 0;
+
+    const { count: pendingKyc } = await supabase.from("kyc").select("*", { count: "exact", head: true }).eq("status", "pending");
+    const { count: verifiedFarmers } = await supabase.from("kyc").select("*", { count: "exact", head: true }).eq("status", "verified");
+
+    res.json({
+      stats: {
+        totalFarmers: totalFarmers || 0,
+        activeFarmers: activeFarmers || 0,
+        blacklistedFarmers: blacklistedFarmers || 0,
+        totalAgents: totalAgents || 0,
+        activeOrders: activeOrders || 0,
+        pendingOrders: pendingOrders || 0,
+        totalCollected: totalCollected.toFixed(2),
+        totalOutstanding: totalOutstanding.toFixed(2),
+        totalRevenue: totalRevenue.toFixed(2),
+        collectionRate,
+        defaultRate,
+        pendingKyc: pendingKyc || 0,
+        verifiedFarmers: verifiedFarmers || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching admin stats:", error);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
 
 // ------------------------
 // Export as Netlify Function

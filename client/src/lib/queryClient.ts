@@ -1,5 +1,9 @@
+// client/src/lib/queryClient.ts
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+/**
+ * Throws an error if the response is not ok.
+ */
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -7,11 +11,14 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/**
+ * Generic API request helper
+ */
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+  data?: unknown
+): Promise<any> {
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -20,16 +27,26 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  return res;
+  return res.json();
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
+/**
+ * Default query function for react-query
+ */
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+    const params = Array.isArray(queryKey) && queryKey[1] ? queryKey[1] : undefined;
+
+    const res = await fetch(url, {
+      method: params ? "POST" : "GET",
+      headers: params ? { "Content-Type": "application/json" } : {},
+      body: params ? JSON.stringify(params) : undefined,
       credentials: "include",
     });
 
@@ -38,9 +55,12 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    return res.json();
   };
 
+/**
+ * React Query client
+ */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

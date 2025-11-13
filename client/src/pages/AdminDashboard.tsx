@@ -1,113 +1,58 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import StatsCard from "@/components/StatsCard";
-import OrderCard from "@/components/OrderCard";
-import { DollarSign, TrendingUp, Users, Upload, Search, LogOut, Sprout } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  LogOut, 
+  Users, 
+  UserCheck,
+  ShoppingCart,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  FileText,
+  Settings
+} from "lucide-react";
 import { logout } from "@/lib/auth";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
 import { formatCurrency } from "@shared/logic/paymentUtils";
+import DashboardOverview from "@/components/admin/DashboardOverview";
+import FarmersManagement from "@/components/admin/FarmersManagement";
+import AgentsManagement from "@/components/admin/AgentsManagement";
+import OrdersManagement from "@/components/admin/OrdersManagement";
+import PaymentsManagement from "@/components/admin/PaymentsManagement";
+import KycManagement from "@/components/admin/KycManagement";
+import ReportsAnalytics from "@/components/admin/ReportsAnalytics";
+import AddUsers from "@/components/admin/AddUsers";
 
-interface Order {
-  id: string;
-  farmerId: string;
-  agentId: string;
-  totalCost: string;
-  downPayment: string;
-  balance: string;
-  status: "pending" | "approved" | "rejected";
-  dueDate: string;
-  createdAt: string;
-}
-
-interface Stats {
-  totalDownPayments: number;
-  totalPendingDebts: number;
-  totalOrders: number;
+interface AdminStats {
+  totalFarmers: number;
+  totalAgents: number;
+  activeOrders: number;
   pendingOrders: number;
+  totalOutstanding: string;
+  totalCollected: string;
+  collectionRate: number;
+  defaultRate: number;
+  pendingKyc: number;
+  verifiedFarmers: number;
+  totalRevenue: string;
+  monthlyRevenue: string;
+  activeFarmers: number;
+  blacklistedFarmers: number;
 }
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [csvDialogOpen, setCSVDialogOpen] = useState(false);
-  const [csvData, setCSVData] = useState("");
 
-  const { data: ordersData } = useQuery<{ orders: Order[] }>({
-    queryKey: ["/api/orders/pending"],
-  });
-
-  const { data: statsData } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
-  });
-
-  const uploadCSVMutation = useMutation({
-    mutationFn: async (csvData: string) => {
-      const res = await fetch("/api/farmers/upload-csv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ csvData }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Success",
-        description: `Uploaded ${data.count} farmers successfully`,
-      });
-      setCSVDialogOpen(false);
-      setCSVData("");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const res = await fetch(`/api/orders/${orderId}/approve`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ comments: "Approved" }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Order approved successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const res = await fetch(`/api/orders/${orderId}/reject`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ comments: "Rejected" }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Order rejected" });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/pending"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+  const { data: statsData, isLoading } = useQuery<{ stats: AdminStats }>({
+    queryKey: ["admin-stats"],
+    queryFn: async () => {
+      const response = await fetch("/.netlify/functions/admin-stats");
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
     },
   });
 
@@ -116,28 +61,29 @@ export default function AdminDashboard() {
     setLocation('/');
   };
 
-  const orders = ordersData?.orders || [];
-  const stats = statsData || { totalDownPayments: 0, totalPendingDebts: 0, totalOrders: 0, pendingOrders: 0 };
+  const stats = statsData?.stats;
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+      {/* Header */}
+      <header className="border-b bg-card sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sprout className="w-5 h-5 text-primary" />
-              </div>
+              <Avatar className="w-10 h-10">
+                <AvatarFallback className="bg-primary/10">
+                  <Settings className="w-5 h-5 text-primary" />
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h1 className="font-bold text-lg">Admin Dashboard</h1>
-                <p className="text-sm text-muted-foreground">Manage farmers and orders</p>
+                <p className="text-sm text-muted-foreground">Gladfore Fertilizer Credit Management</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={handleLogout}
-              data-testid="button-logout"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -146,101 +92,167 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatsCard
-            title="Total Down Payments"
-            value={formatCurrency(stats.totalDownPayments)}
-            icon={DollarSign}
-          />
-          <StatsCard
-            title="Total Pending Debts"
-            value={formatCurrency(stats.totalPendingDebts)}
-            icon={TrendingUp}
-          />
-          <StatsCard
-            title="Pending Orders"
-            value={stats.pendingOrders.toString()}
-            icon={Users}
-          />
+      <main className="max-w-[1600px] mx-auto px-4 md:px-6 py-8">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Farmers</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.totalFarmers || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="text-green-600">{stats?.activeFarmers || 0} active</span>
+                {stats?.blacklistedFarmers ? ` • ${stats.blacklistedFarmers} blacklisted` : ''}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.totalAgents || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Active agents in the field
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
+              <AlertCircle className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.pendingKyc || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="text-green-600">{stats?.verifiedFarmers || 0} verified</span>
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.activeOrders || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats?.pendingOrders || 0} pending approval
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(parseFloat(stats?.totalRevenue || "0"))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatCurrency(parseFloat(stats?.monthlyRevenue || "0"))} this month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(parseFloat(stats?.totalOutstanding || "0"))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Pending collections
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats?.collectionRate || 0}%</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatCurrency(parseFloat(stats?.totalCollected || "0"))} collected
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Default Rate</CardTitle>
+              <TrendingDown className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">
+                {stats?.defaultRate || 0}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Overdue payments
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-2xl font-bold">Pending Orders</h2>
-            <Button onClick={() => setCSVDialogOpen(true)} data-testid="button-upload-csv">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Farmers CSV
-            </Button>
-          </div>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-8 w-full lg:w-auto">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="add-users">Add Users</TabsTrigger>
+            <TabsTrigger value="farmers">Farmers</TabsTrigger>
+            <TabsTrigger value="agents">Agents</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="kyc">KYC Review</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+          </TabsList>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search orders..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="input-search"
-            />
-          </div>
+          <TabsContent value="overview">
+            <DashboardOverview stats={stats} />
+          </TabsContent>
 
-          {orders.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No pending orders at the moment
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {orders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  orderId={order.id}
-                  farmerName={`Farmer #${order.farmerId.slice(0, 8)}`}
-                  totalCost={order.totalCost}
-                  downPayment={order.downPayment}
-                  balance={order.balance}
-                  status={order.status}
-                  dueDate={order.dueDate}
-                  showActions={true}
-                  onApprove={() => approveMutation.mutate(order.id)}
-                  onReject={() => rejectMutation.mutate(order.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          <TabsContent value="add-users">
+            <AddUsers />
+          </TabsContent>
+
+          <TabsContent value="farmers">
+            <FarmersManagement />
+          </TabsContent>
+
+          <TabsContent value="agents">
+            <AgentsManagement />
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <OrdersManagement />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <PaymentsManagement />
+          </TabsContent>
+
+          <TabsContent value="kyc">
+            <KycManagement />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <ReportsAnalytics />
+          </TabsContent>
+        </Tabs>
       </main>
-
-      <Dialog open={csvDialogOpen} onOpenChange={setCSVDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Farmers CSV</DialogTitle>
-            <DialogDescription>
-              Paste CSV data with columns: farmer_id, name, phone
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            placeholder="farmer_id,name,phone&#10;F2025001,John Kamau,+254712345678&#10;F2025002,Mary Wanjiku,+254723456789"
-            value={csvData}
-            onChange={(e) => setCSVData(e.target.value)}
-            rows={10}
-            data-testid="input-csv"
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCSVDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => uploadCSVMutation.mutate(csvData)}
-              disabled={uploadCSVMutation.isPending || !csvData}
-              data-testid="button-submit-csv"
-            >
-              {uploadCSVMutation.isPending ? "Uploading..." : "Upload"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
