@@ -36,22 +36,15 @@ interface CreatedUser {
   creditLimit?: string;
 }
 
-interface AddUsersProps {
-  onSuccess?: () => void;
-}
-
-export default function AddUsers({ onSuccess }: AddUsersProps) {
+export default function AddUsers() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [userType, setUserType] = useState<"farmer" | "agent">("farmer");
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
   const [createdUser, setCreatedUser] = useState<CreatedUser | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  // new feedback states
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Farmer form fields
   const [farmerData, setFarmerData] = useState({
     fullName: "",
     phone: "",
@@ -68,7 +61,6 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
     autoApproveKyc: true,
   });
 
-  // Agent form fields
   const [agentData, setAgentData] = useState({
     fullName: "",
     phone: "",
@@ -78,7 +70,7 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
     collectionCommissionRate: "1.0",
   });
 
-  const { toast } = useToast();
+  const toast = useToast().toast;
   const queryClient = useQueryClient();
 
   const createUserMutation = useMutation({
@@ -94,7 +86,7 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
         try {
           const error = await response.json();
           errorMessage = error.error || error.details || errorMessage;
-        } catch (e) {
+        } catch {
           errorMessage = await response.text() || errorMessage;
         }
         throw new Error(errorMessage);
@@ -110,14 +102,9 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
 
-      // refresh dashboard externally
-      onSuccess?.();
-
-      // reset feedback and form
       setSuccessMsg(`User created successfully! Password: ${data.user.password}`);
       setError(null);
 
-      // Reset forms
       setFarmerData({
         fullName: "",
         phone: "",
@@ -133,6 +120,7 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
         creditLimit: "50000",
         autoApproveKyc: true,
       });
+
       setAgentData({
         fullName: "",
         phone: "",
@@ -159,48 +147,24 @@ export default function AddUsers({ onSuccess }: AddUsersProps) {
     if (userType === "farmer") {
       if (!farmerData.fullName || !farmerData.phone || !farmerData.farmLocation) {
         setError("Please fill in all required fields");
-        toast({
-          title: "Error",
-          description: "Please fill in all required fields",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
         return;
       }
-
-      const cropTypesArray = farmerData.cropTypes
-        .split(",")
-        .map(c => c.trim())
-        .filter(c => c.length > 0);
-
-      createUserMutation.mutate({
-        userType: "farmer",
-        ...farmerData,
-        cropTypes: cropTypesArray,
-      });
+      const cropTypesArray = farmerData.cropTypes.split(",").map(c => c.trim()).filter(c => c.length > 0);
+      createUserMutation.mutate({ userType: "farmer", ...farmerData, cropTypes: cropTypesArray });
     } else {
       if (!agentData.fullName || !agentData.phone || !agentData.region) {
         setError("Please fill in all required fields");
-        toast({
-          title: "Error",
-          description: "Please fill in all required fields",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
         return;
       }
-
-      createUserMutation.mutate({
-        userType: "agent",
-        ...agentData,
-      });
+      createUserMutation.mutate({ userType: "agent", ...agentData });
     }
   };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${label} copied to clipboard`,
-    });
+    toast({ title: "Copied!", description: `${label} copied to clipboard` });
   };
 
   const downloadCredentials = () => {
@@ -217,9 +181,6 @@ Password: ${createdUser.password}
 
 Login URL: ${window.location.origin}/login
 
-IMPORTANT: Keep these credentials safe and secure.
-Share them only with ${createdUser.fullName}.
-
 Generated: ${new Date().toLocaleString()}
     `.trim();
 
@@ -233,99 +194,29 @@ Generated: ${new Date().toLocaleString()}
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
-    toast({
-      title: "Downloaded",
-      description: "Credentials file downloaded successfully",
-    });
+    toast({ title: "Downloaded", description: "Credentials file downloaded successfully" });
   };
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Add Farmers & Agents</CardTitle>
-              <CardDescription>
-                Create new farmer and agent accounts with auto-generated credentials
-              </CardDescription>
-            </div>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add New User
-            </Button>
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <CardTitle>Add Farmers & Agents</CardTitle>
+            <CardDescription>Create new users with auto-generated credentials</CardDescription>
           </div>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" /> Add New User
+          </Button>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <Users className="w-8 h-8 mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Add Farmer</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Register farmers collected from field work. Auto-generates login credentials.
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setUserType("farmer");
-                    setAddDialogOpen(true);
-                  }}
-                >
-                  Add Farmer
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <UserPlus className="w-8 h-8 mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Add Agent</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Register new field agents. Auto-generates login credentials.
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setUserType("agent");
-                    setAddDialogOpen(true);
-                  }}
-                >
-                  Add Agent
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {error && (
-            <p className="text-red-600 text-sm mt-4">{error}</p>
-          )}
-          {successMsg && (
-            <p className="text-green-600 text-sm mt-4">{successMsg}</p>
-          )}
-
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>Note:</strong> After creating a user, you'll receive auto-generated credentials
-              (username/phone and password) that should be securely shared with the user. Users can
-              login with either phone number or email.
-            </p>
-          </div>
-        </CardContent>
       </Card>
 
       {/* Add User Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Add New {userType === "farmer" ? "Farmer" : "Agent"}
-            </DialogTitle>
-            <DialogDescription>
-              Fill in the details below. Login credentials will be auto-generated.
-            </DialogDescription>
+            <DialogTitle>Add New {userType === "farmer" ? "Farmer" : "Agent"}</DialogTitle>
+            <DialogDescription>Fill in the details below. Login credentials will be auto-generated.</DialogDescription>
           </DialogHeader>
 
           <Tabs value={userType} onValueChange={(v) => setUserType(v as "farmer" | "agent")}>
@@ -336,152 +227,212 @@ Generated: ${new Date().toLocaleString()}
 
             {/* Farmer Form */}
             <TabsContent value="farmer" className="space-y-4">
-              {/* same farmer form content */}
-              {/* unchanged form fields */}
-              {/* ... */}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label>Full Name</Label>
+                  <Input value={farmerData.fullName} onChange={e => setFarmerData(f => ({ ...f, fullName: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={farmerData.phone} onChange={e => setFarmerData(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input value={farmerData.email} onChange={e => setFarmerData(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Farm Size</Label>
+                  <Input value={farmerData.farmSize} onChange={e => setFarmerData(f => ({ ...f, farmSize: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Farm Location</Label>
+                  <Input value={farmerData.farmLocation} onChange={e => setFarmerData(f => ({ ...f, farmLocation: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Crop Types (comma separated)</Label>
+                  <Input value={farmerData.cropTypes} onChange={e => setFarmerData(f => ({ ...f, cropTypes: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Guarantor Name</Label>
+                  <Input value={farmerData.guarantorName} onChange={e => setFarmerData(f => ({ ...f, guarantorName: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Guarantor Phone</Label>
+                  <Input value={farmerData.guarantorPhone} onChange={e => setFarmerData(f => ({ ...f, guarantorPhone: e.target.value }))} />
+                </div>
+              </div>
             </TabsContent>
 
             {/* Agent Form */}
             <TabsContent value="agent" className="space-y-4">
-              {/* same agent form content */}
-              {/* unchanged form fields */}
-              {/* ... */}
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label>Full Name</Label>
+                  <Input value={agentData.fullName} onChange={e => setAgentData(a => ({ ...a, fullName: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input value={agentData.phone} onChange={e => setAgentData(a => ({ ...a, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input value={agentData.email} onChange={e => setAgentData(a => ({ ...a, email: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Region</Label>
+                  <Input value={agentData.region} onChange={e => setAgentData(a => ({ ...a, region: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Commission Rate (%)</Label>
+                  <Input value={agentData.commissionRate} onChange={e => setAgentData(a => ({ ...a, commissionRate: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Collection Commission Rate (%)</Label>
+                  <Input value={agentData.collectionCommissionRate} onChange={e => setAgentData(a => ({ ...a, collectionCommissionRate: e.target.value }))} />
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={createUserMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={createUserMutation.isPending}>
               {createUserMutation.isPending ? "Creating..." : `Create ${userType === "farmer" ? "Farmer" : "Agent"}`}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Credentials Display Dialog */}
+      {/* Credentials Dialog */}
       <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Badge variant="default" className="text-lg px-3 py-1">
-                {createdUser?.role.toUpperCase()}
-              </Badge>
-              Account Created Successfully!
+              <UserPlus className="w-5 h-5 text-green-600" />
+              User Created Successfully!
             </DialogTitle>
             <DialogDescription>
-              Save these credentials securely. The password will not be shown again.
+              Save these login credentials. They will not be shown again.
             </DialogDescription>
           </DialogHeader>
 
           {createdUser && (
             <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg space-y-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Name</Label>
-                  <p className="font-semibold">{createdUser.fullName}</p>
-                </div>
-
-                <div className="border-t pt-3">
-                  <Label className="text-xs text-muted-foreground">Login Credentials</Label>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Phone/Username</p>
-                        <p className="font-mono font-semibold">{createdUser.phone}</p>
-                      </div>
+              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium text-green-800 dark:text-green-200">Name</Label>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm font-mono">{createdUser.fullName}</span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => copyToClipboard(createdUser.phone, "Phone number")}
+                        onClick={() => copyToClipboard(createdUser.fullName, "Name")}
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-3 h-3" />
                       </Button>
                     </div>
+                  </div>
 
-                    {createdUser.email && (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Email</p>
-                          <p className="font-mono font-semibold">{createdUser.email}</p>
-                        </div>
+                  <div>
+                    <Label className="text-sm font-medium text-green-800 dark:text-green-200">Phone</Label>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm font-mono">{createdUser.phone}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => copyToClipboard(createdUser.phone, "Phone")}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {createdUser.email && (
+                    <div>
+                      <Label className="text-sm font-medium text-green-800 dark:text-green-200">Email</Label>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-sm font-mono">{createdUser.email}</span>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => copyToClipboard(createdUser.email!, "Email")}
                         >
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3 h-3" />
                         </Button>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-xs text-muted-foreground">Password</p>
-                        <p className="font-mono font-semibold">
-                          {showPassword ? createdUser.password : "••••••••"}
-                        </p>
-                      </div>
+                  <div>
+                    <Label className="text-sm font-medium text-green-800 dark:text-green-200">Password</Label>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-sm font-mono">
+                        {showPassword ? createdUser.password : "••••••••"}
+                      </span>
                       <div className="flex gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => copyToClipboard(createdUser.password, "Password")}
                         >
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {createdUser.creditLimit && (
-                  <div className="border-t pt-3">
-                    <Label className="text-xs text-muted-foreground">Credit Limit</Label>
-                    <p className="font-semibold text-lg">₦{parseFloat(createdUser.creditLimit).toLocaleString()}</p>
+                  <div>
+                    <Label className="text-sm font-medium text-green-800 dark:text-green-200">Role</Label>
+                    <div className="mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {createdUser.role.charAt(0).toUpperCase() + createdUser.role.slice(1)}
+                      </Badge>
+                    </div>
                   </div>
-                )}
+
+                  {createdUser.role === "farmer" && createdUser.creditLimit && (
+                    <div>
+                      <Label className="text-sm font-medium text-green-800 dark:text-green-200">Credit Limit</Label>
+                      <div className="mt-1">
+                        <span className="text-sm font-mono">₦{parseInt(createdUser.creditLimit).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">
+                <Button onClick={downloadCredentials} className="flex-1">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Credentials
+                </Button>
                 <Button
                   variant="outline"
-                  className="flex-1"
-                  onClick={downloadCredentials}
+                  onClick={() => copyToClipboard(
+                    `Name: ${createdUser.fullName}\nPhone: ${createdUser.phone}\n${createdUser.email ? `Email: ${createdUser.email}\n` : ''}Password: ${createdUser.password}\nRole: ${createdUser.role}`,
+                    "All credentials"
+                  )}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy All
                 </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setCredentialsDialogOpen(false);
-                    setCreatedUser(null);
-                    setShowPassword(false);
-                  }}
-                >
-                  Done
-                </Button>
-              </div>
-
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                <p className="text-xs text-yellow-900 dark:text-yellow-100">
-                  <strong>Important:</strong> Make sure to save or share these credentials with {createdUser.fullName}. The password cannot be retrieved later.
-                </p>
               </div>
             </div>
           )}
+
+          <DialogFooter>
+            <Button onClick={() => setCredentialsDialogOpen(false)} className="w-full">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

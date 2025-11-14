@@ -58,7 +58,7 @@ The database has been seeded with test users for development:
 The 50% down payment validation is implemented in `shared/logic/paymentUtils.ts`:
 - `calculateDownPayment()`: Returns exactly 50% of total cost
 - `validateDownPayment()`: Ensures payment is within 1 cent of 50%
-- `formatCurrency()`: Formats amounts in KES currency
+- `formatCurrency()`: Formats amounts in NGN currency (Nigerian Naira)
 
 This shared logic can be reused in future React Native mobile app.
 

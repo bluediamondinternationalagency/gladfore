@@ -18,6 +18,7 @@ import {
 import { CheckCircle2, XCircle, FileText, User, Phone, MapPin, Sprout, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { formatCurrency } from "@shared/logic/paymentUtils";
 
 interface KycApplication {
   id: string;
@@ -220,16 +221,16 @@ export default function KycManagement() {
                 )}
 
                 <div className="space-y-2">
-                  <Label>Credit Limit (₦)</Label>
+                  <Label>Credit Limit</Label>
                   <Input
                     type="number"
                     value={creditLimit}
                     onChange={(e) => setCreditLimit(e.target.value)}
-                    placeholder="Enter credit limit"
+                    placeholder="Enter credit limit in Naira"
                   />
                   {selectedApplication && (
                     <p className="text-xs text-muted-foreground">
-                      Suggested: ₦{calculateSuggestedLimit(selectedApplication).toLocaleString()}
+                      Suggested: {formatCurrency(calculateSuggestedLimit(selectedApplication))}
                     </p>
                   )}
                 </div>

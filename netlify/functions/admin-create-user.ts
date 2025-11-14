@@ -3,9 +3,20 @@ import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
+// Use environment variables with fallback
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("Missing required environment variables:", {
+    url: !!supabaseUrl,
+    key: !!supabaseServiceKey
+  });
+}
+
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role key for admin operations
+  supabaseUrl!,
+  supabaseServiceKey! // Use service role key for admin operations
 );
 
 // Helper to generate password
@@ -19,10 +30,20 @@ const generatePassword = (): string => {
 };
 
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+  console.log("Function called:", event.httpMethod, event.path);
+  console.log("Environment check:", {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseServiceKey
+  });
+
   // Only allow POST
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
       body: JSON.stringify({ error: "Method not allowed" }),
     };
   }
@@ -58,16 +79,18 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Create user account
+      // Create user account (don't include email if it's empty to avoid conflicts)
+      const userInsertData = {
+        phone: userData.phone,
+        password_hash: passwordHash,
+        role: "farmer",
+        is_active: true,
+        ...(userData.email && userData.email.trim() ? { email: userData.email.trim() } : {})
+      };
+
       const { data: user, error: userError } = await supabase
         .from("users")
-        .insert({
-          phone: userData.phone,
-          email: userData.email || null,
-          password_hash: passwordHash,
-          role: "farmer",
-          is_active: true,
-        })
+        .insert(userInsertData)
         .select()
         .single();
 
@@ -124,6 +147,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       return {
         statusCode: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
         body: JSON.stringify({
           user: {
             id: farmerProfile.id,
@@ -160,16 +187,18 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Create user account
+      // Create user account (don't include email if it's empty to avoid conflicts)
+      const userInsertData = {
+        phone: userData.phone,
+        password_hash: passwordHash,
+        role: "agent",
+        is_active: true,
+        ...(userData.email && userData.email.trim() ? { email: userData.email.trim() } : {})
+      };
+
       const { data: user, error: userError } = await supabase
         .from("users")
-        .insert({
-          phone: userData.phone,
-          email: userData.email || null,
-          password_hash: passwordHash,
-          role: "agent",
-          is_active: true,
-        })
+        .insert(userInsertData)
         .select()
         .single();
 
@@ -218,6 +247,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       return {
         statusCode: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
         body: JSON.stringify({
           user: {
             id: agentProfile.id,
@@ -233,6 +266,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     } else {
       return {
         statusCode: 400,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
         body: JSON.stringify({ error: "Invalid user type" }),
       };
     }
@@ -241,6 +278,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     console.error("Error creating user:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
       body: JSON.stringify({ 
         error: "Failed to create user",
         details: error instanceof Error ? error.message : "Unknown error"

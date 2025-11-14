@@ -225,11 +225,11 @@ export default function AgentDashboard() {
               <h3 className="font-semibold">Order Information</h3>
 
               <div className="space-y-2">
-                <Label htmlFor="totalCost">Total Cost (₦)</Label>
+                <Label htmlFor="totalCost">Total Cost</Label>
                 <Input
                   id="totalCost"
                   type="number"
-                  placeholder="Enter total cost"
+                  placeholder="Enter total cost in Naira"
                   value={totalCost}
                   onChange={(e) => setTotalCost(e.target.value)}
                   data-testid="input-total-cost"
