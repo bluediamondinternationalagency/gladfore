@@ -51,7 +51,7 @@ export async function login(identifier: string, password: string): Promise<User>
     id: supaUser.id,
     phone: supaUser.phone ?? undefined,
     email: supaUser.email ?? undefined,
-    name: supaUser.user_metadata?.name ?? "",
+    name: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? "",
     role: supaUser.user_metadata?.role ?? "farmer",
   };
 }
@@ -111,7 +111,7 @@ export async function getCurrentUser(): Promise<User | null> {
     id: supaUser.id,
     phone: supaUser.phone ?? undefined,
     email: supaUser.email ?? undefined,
-    name: supaUser.user_metadata?.name ?? '',
+    name: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? '',
     role: supaUser.user_metadata?.role ?? 'farmer',
   }
 }

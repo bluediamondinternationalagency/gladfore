@@ -52,11 +52,11 @@ export default function AddUsers() {
     farmSize: "",
     farmLocation: "",
     cropTypes: "",
-    idType: "national_id" as const,
+    idType: "national_id" as "national_id" | "voters_card" | "drivers_license",
     idNumber: "",
     guarantorName: "",
     guarantorPhone: "",
-    guarantorType: "chief" as const,
+    guarantorType: "chief" as "chief" | "religious_leader",
     creditLimit: "50000",
     autoApproveKyc: true,
   });
@@ -72,6 +72,27 @@ export default function AddUsers() {
 
   const toast = useToast().toast;
   const queryClient = useQueryClient();
+
+  // Format phone to E.164 format required by Supabase Auth
+  const formatPhoneE164 = (phone: string): string => {
+    // Remove all non-digit characters except +
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If it doesn't start with country code, assume Nigeria (+234)
+    if (cleaned.length === 10 && cleaned.startsWith('0')) {
+      // Nigerian format: 08XXXXXXXXX -> 2348XXXXXXXXX
+      cleaned = '234' + cleaned.substring(1);
+    } else if (cleaned.length === 10) {
+      // Assume it's a Nigerian number without leading 0
+      cleaned = '234' + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith('234')) {
+      // Already has country code
+    } else if (cleaned.length < 10) {
+      throw new Error("Phone number must have at least 10 digits");
+    }
+    
+    return '+' + cleaned;
+  };
 
   const createUserMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -150,15 +171,36 @@ export default function AddUsers() {
         toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
         return;
       }
-      const cropTypesArray = farmerData.cropTypes.split(",").map(c => c.trim()).filter(c => c.length > 0);
-      createUserMutation.mutate({ userType: "farmer", ...farmerData, cropTypes: cropTypesArray });
+      try {
+        const formattedPhone = formatPhoneE164(farmerData.phone);
+        const formattedGuarantorPhone = farmerData.guarantorPhone ? formatPhoneE164(farmerData.guarantorPhone) : "";
+        const cropTypesArray = farmerData.cropTypes.split(",").map(c => c.trim()).filter(c => c.length > 0);
+        createUserMutation.mutate({ 
+          userType: "farmer", 
+          ...farmerData, 
+          phone: formattedPhone,
+          guarantorPhone: formattedGuarantorPhone,
+          cropTypes: cropTypesArray 
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Invalid phone format";
+        setError(msg);
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     } else {
       if (!agentData.fullName || !agentData.phone || !agentData.region) {
         setError("Please fill in all required fields");
         toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
         return;
       }
-      createUserMutation.mutate({ userType: "agent", ...agentData });
+      try {
+        const formattedPhone = formatPhoneE164(agentData.phone);
+        createUserMutation.mutate({ userType: "agent", ...agentData, phone: formattedPhone });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Invalid phone format";
+        setError(msg);
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     }
   };
 
@@ -179,7 +221,12 @@ Phone: ${createdUser.phone}
 ${createdUser.email ? `Email: ${createdUser.email}\n` : ""}
 Password: ${createdUser.password}
 
-Login URL: ${window.location.origin}/login
+LOGIN INSTRUCTIONS:
+1. Go to: ${window.location.origin}/login
+2. Select "${createdUser.role.charAt(0).toUpperCase() + createdUser.role.slice(1)}" tab
+3. Enter either phone number or email as username
+4. Enter the password above
+5. Click "Sign In"
 
 Generated: ${new Date().toLocaleString()}
     `.trim();
@@ -227,68 +274,209 @@ Generated: ${new Date().toLocaleString()}
 
             {/* Farmer Form */}
             <TabsContent value="farmer" className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label>Full Name</Label>
-                  <Input value={farmerData.fullName} onChange={e => setFarmerData(f => ({ ...f, fullName: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label className="text-red-600">Full Name *</Label>
+                  <Input 
+                    value={farmerData.fullName} 
+                    onChange={e => setFarmerData(f => ({ ...f, fullName: e.target.value }))} 
+                    placeholder="Enter full name"
+                  />
                 </div>
                 <div>
-                  <Label>Phone</Label>
-                  <Input value={farmerData.phone} onChange={e => setFarmerData(f => ({ ...f, phone: e.target.value }))} />
+                  <Label className="text-red-600">Phone *</Label>
+                  <Input 
+                    placeholder="e.g., +234801234567 or 08012345670"
+                    value={farmerData.phone} 
+                    onChange={e => setFarmerData(f => ({ ...f, phone: e.target.value }))} 
+                  />
                 </div>
                 <div>
-                  <Label>Email</Label>
-                  <Input value={farmerData.email} onChange={e => setFarmerData(f => ({ ...f, email: e.target.value }))} />
+                  <Label>Email (Optional)</Label>
+                  <Input 
+                    type="email"
+                    placeholder="farmer@example.com"
+                    value={farmerData.email} 
+                    onChange={e => setFarmerData(f => ({ ...f, email: e.target.value }))} 
+                  />
                 </div>
                 <div>
-                  <Label>Farm Size</Label>
-                  <Input value={farmerData.farmSize} onChange={e => setFarmerData(f => ({ ...f, farmSize: e.target.value }))} />
+                  <Label>Farm Size (Hectares)</Label>
+                  <Input 
+                    placeholder="e.g., 5"
+                    value={farmerData.farmSize} 
+                    onChange={e => setFarmerData(f => ({ ...f, farmSize: e.target.value }))} 
+                  />
                 </div>
                 <div>
-                  <Label>Farm Location</Label>
-                  <Input value={farmerData.farmLocation} onChange={e => setFarmerData(f => ({ ...f, farmLocation: e.target.value }))} />
+                  <Label className="text-red-600">Farm Location *</Label>
+                  <Input 
+                    placeholder="e.g., Kaduna, Nigeria"
+                    value={farmerData.farmLocation} 
+                    onChange={e => setFarmerData(f => ({ ...f, farmLocation: e.target.value }))} 
+                  />
                 </div>
-                <div>
+                <div className="col-span-2">
                   <Label>Crop Types (comma separated)</Label>
-                  <Input value={farmerData.cropTypes} onChange={e => setFarmerData(f => ({ ...f, cropTypes: e.target.value }))} />
+                  <Input 
+                    placeholder="e.g., Maize, Rice, Cassava"
+                    value={farmerData.cropTypes} 
+                    onChange={e => setFarmerData(f => ({ ...f, cropTypes: e.target.value }))} 
+                  />
                 </div>
+                
+                {/* KYC Section */}
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3">KYC Information</h3>
+                </div>
+                
+                <div>
+                  <Label>ID Type</Label>
+                  <Select 
+                    value={farmerData.idType} 
+                    onValueChange={v => setFarmerData(f => ({ ...f, idType: v as "national_id" | "voters_card" | "drivers_license" }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="national_id">National ID</SelectItem>
+                      <SelectItem value="voters_card">Voter's Card</SelectItem>
+                      <SelectItem value="drivers_license">Driver's License</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>ID Number</Label>
+                  <Input 
+                    placeholder="Enter ID number"
+                    value={farmerData.idNumber} 
+                    onChange={e => setFarmerData(f => ({ ...f, idNumber: e.target.value }))} 
+                  />
+                </div>
+                
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3">Guarantor Information</h3>
+                </div>
+                
                 <div>
                   <Label>Guarantor Name</Label>
-                  <Input value={farmerData.guarantorName} onChange={e => setFarmerData(f => ({ ...f, guarantorName: e.target.value }))} />
+                  <Input 
+                    placeholder="Enter guarantor name"
+                    value={farmerData.guarantorName} 
+                    onChange={e => setFarmerData(f => ({ ...f, guarantorName: e.target.value }))} 
+                  />
                 </div>
                 <div>
                   <Label>Guarantor Phone</Label>
-                  <Input value={farmerData.guarantorPhone} onChange={e => setFarmerData(f => ({ ...f, guarantorPhone: e.target.value }))} />
+                  <Input 
+                    placeholder="e.g., +234801234567 or 08012345670"
+                    value={farmerData.guarantorPhone} 
+                    onChange={e => setFarmerData(f => ({ ...f, guarantorPhone: e.target.value }))} 
+                  />
+                </div>
+                <div>
+                  <Label>Guarantor Type</Label>
+                  <Select 
+                    value={farmerData.guarantorType} 
+                    onValueChange={v => setFarmerData(f => ({ ...f, guarantorType: v as "chief" | "religious_leader" }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="chief">Chief</SelectItem>
+                      <SelectItem value="religious_leader">Religious Leader</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3">Credit Settings</h3>
+                </div>
+                
+                <div>
+                  <Label>Credit Limit (₦)</Label>
+                  <Input 
+                    type="number"
+                    placeholder="50000"
+                    value={farmerData.creditLimit} 
+                    onChange={e => setFarmerData(f => ({ ...f, creditLimit: e.target.value }))} 
+                  />
+                </div>
+                <div className="flex items-center space-x-2 pt-6">
+                  <input 
+                    type="checkbox" 
+                    id="autoApprove"
+                    checked={farmerData.autoApproveKyc}
+                    onChange={e => setFarmerData(f => ({ ...f, autoApproveKyc: e.target.checked }))}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="autoApprove" className="cursor-pointer">Auto-approve KYC</Label>
                 </div>
               </div>
             </TabsContent>
 
             {/* Agent Form */}
             <TabsContent value="agent" className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label>Full Name</Label>
-                  <Input value={agentData.fullName} onChange={e => setAgentData(a => ({ ...a, fullName: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label className="text-red-600">Full Name *</Label>
+                  <Input 
+                    value={agentData.fullName} 
+                    onChange={e => setAgentData(a => ({ ...a, fullName: e.target.value }))} 
+                    placeholder="Enter full name"
+                  />
                 </div>
                 <div>
-                  <Label>Phone</Label>
-                  <Input value={agentData.phone} onChange={e => setAgentData(a => ({ ...a, phone: e.target.value }))} />
+                  <Label className="text-red-600">Phone *</Label>
+                  <Input 
+                    placeholder="e.g., +234801234567 or 08012345670"
+                    value={agentData.phone} 
+                    onChange={e => setAgentData(a => ({ ...a, phone: e.target.value }))} 
+                  />
                 </div>
                 <div>
-                  <Label>Email</Label>
-                  <Input value={agentData.email} onChange={e => setAgentData(a => ({ ...a, email: e.target.value }))} />
+                  <Label>Email (Optional)</Label>
+                  <Input 
+                    type="email"
+                    placeholder="agent@example.com"
+                    value={agentData.email} 
+                    onChange={e => setAgentData(a => ({ ...a, email: e.target.value }))} 
+                  />
                 </div>
-                <div>
-                  <Label>Region</Label>
-                  <Input value={agentData.region} onChange={e => setAgentData(a => ({ ...a, region: e.target.value }))} />
+                <div className="col-span-2">
+                  <Label className="text-red-600">Region *</Label>
+                  <Input 
+                    value={agentData.region} 
+                    onChange={e => setAgentData(a => ({ ...a, region: e.target.value }))} 
+                    placeholder="e.g., Kaduna State"
+                  />
                 </div>
+                
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <h3 className="text-sm font-semibold mb-3">Commission Settings</h3>
+                </div>
+                
                 <div>
-                  <Label>Commission Rate (%)</Label>
-                  <Input value={agentData.commissionRate} onChange={e => setAgentData(a => ({ ...a, commissionRate: e.target.value }))} />
+                  <Label>Sales Commission Rate (%)</Label>
+                  <Input 
+                    type="number"
+                    step="0.1"
+                    placeholder="2.5"
+                    value={agentData.commissionRate} 
+                    onChange={e => setAgentData(a => ({ ...a, commissionRate: e.target.value }))} 
+                  />
                 </div>
                 <div>
                   <Label>Collection Commission Rate (%)</Label>
-                  <Input value={agentData.collectionCommissionRate} onChange={e => setAgentData(a => ({ ...a, collectionCommissionRate: e.target.value }))} />
+                  <Input 
+                    type="number"
+                    step="0.1"
+                    placeholder="1.0"
+                    value={agentData.collectionCommissionRate} 
+                    onChange={e => setAgentData(a => ({ ...a, collectionCommissionRate: e.target.value }))} 
+                  />
                 </div>
               </div>
             </TabsContent>
@@ -312,7 +500,7 @@ Generated: ${new Date().toLocaleString()}
               User Created Successfully!
             </DialogTitle>
             <DialogDescription>
-              Save these login credentials. They will not be shown again.
+              Save these login credentials. They will not be shown again. Users can login using either their phone number or email.
             </DialogDescription>
           </DialogHeader>
 
