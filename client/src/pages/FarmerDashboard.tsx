@@ -5,6 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
 import { 
   DollarSign, 
   Clock, 
@@ -19,12 +24,16 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Check,
+  CheckCheck
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { formatCurrency } from "@shared/logic/paymentUtils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { API_ENDPOINTS, api } from "@/lib/api";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Order {
   id: string;
@@ -86,30 +95,175 @@ export default function FarmerDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [updateFormData, setUpdateFormData] = useState({
+    phone: '',
+    farmSize: '',
+    farmLocation: '',
+    cropTypes: '',
+    idType: '',
+    idNumber: '',
+    guarantorName: '',
+    guarantorPhone: '',
+    guarantorType: 'chief' as 'chief' | 'religious_leader',
+  });
+
+  // Helper to safely format dates
+  const formatDate = (dateString: string | undefined | null, formatStr: string): string => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return format(date, formatStr);
+    } catch {
+      return 'N/A';
+    }
+  }
+
+  // Helper to get auth headers
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session')
+    }
+    return {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+      'Authorization': `Bearer ${session.access_token}`,
+    }
+  }
 
   // Fetch farmer profile
-  const { data: profileData } = useQuery<{ profile: FarmerProfile }>({
-    queryKey: ["/api/farmer/profile"],
+  const { data: profileData, isLoading: profileLoading } = useQuery<{ profile: FarmerProfile }>({
+    queryKey: ["farmer-profile"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders()
+      const response = await fetch(API_ENDPOINTS.farmerProfile, { headers })
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile')
+      }
+      return response.json()
+    }
   });
 
   // Fetch orders
-  const { data: ordersData } = useQuery<{ orders: Order[] }>({
-    queryKey: ["/api/farmer/orders"],
+  const { data: ordersData, isLoading: ordersLoading } = useQuery<{ orders: Order[] }>({
+    queryKey: ["farmer-orders"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders()
+      const response = await fetch(API_ENDPOINTS.farmerOrders, { headers })
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders')
+      }
+      return response.json()
+    }
   });
 
   // Fetch payments
-  const { data: paymentsData } = useQuery<{ payments: Payment[] }>({
-    queryKey: ["/api/farmer/payments"],
+  const { data: paymentsData, isLoading: paymentsLoading } = useQuery<{ payments: Payment[] }>({
+    queryKey: ["farmer-payments"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders()
+      const response = await fetch(API_ENDPOINTS.farmerPayments, { headers })
+      if (!response.ok) {
+        throw new Error('Failed to fetch payments')
+      }
+      return response.json()
+    }
   });
 
   // Fetch notifications
-  const { data: notificationsData } = useQuery<{ notifications: Notification[] }>({
-    queryKey: ["/api/farmer/notifications"],
+  const { data: notificationsData, isLoading: notificationsLoading } = useQuery<{ notifications: Notification[] }>({
+    queryKey: ["farmer-notifications"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders()
+      const response = await fetch(API_ENDPOINTS.farmerNotifications, { headers })
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications')
+      }
+      return response.json()
+    }
   });
 
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: api.markNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["farmer-notifications"] })
+    },
+    onError: () => {
+      toast({ 
+        title: "Error", 
+        description: "Failed to mark notification as read", 
+        variant: "destructive" 
+      })
+    }
+  })
+
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsReadMutation.mutate({ notificationId });
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAsReadMutation.mutate({ markAllAsRead: true });
+  };
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof updateFormData) => {
+      const headers = await getAuthHeaders()
+      const response = await fetch(API_ENDPOINTS.farmerProfileUpdate, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          ...data,
+          cropTypes: data.cropTypes ? data.cropTypes.split(',').map(c => c.trim()).filter(c => c) : undefined,
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.details || 'Failed to update profile')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["farmer-profile"] })
+      setIsUpdateDialogOpen(false)
+      toast({ title: "Profile updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update profile", 
+        variant: "destructive" 
+      })
+    }
+  })
+
   const handleLogout = async () => {
-    await logout();
-    setLocation('/');
+    try {
+      await logout();
+      setLocation('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const handleOpenUpdateDialog = () => {
+    if (profile) {
+      setUpdateFormData({
+        phone: profile.phone || '',
+        farmSize: profile.farmSize || '',
+        farmLocation: profile.farmLocation || '',
+        cropTypes: profile.cropTypes?.join(', ') || '',
+        idType: profile.idType || 'national_id',
+        idNumber: profile.idNumber || '',
+        guarantorName: profile.guarantorName || '',
+        guarantorPhone: profile.guarantorPhone || '',
+        guarantorType: profile.guarantorType || 'chief',
+      })
+      setIsUpdateDialogOpen(true)
+    }
   };
 
   const profile = profileData?.profile;
@@ -117,14 +271,22 @@ export default function FarmerDashboard() {
   const payments = paymentsData?.payments || [];
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  
+  const isLoading = profileLoading || ordersLoading || paymentsLoading || notificationsLoading;
 
   // Calculate stats
   const approvedOrders = orders.filter(o => o.status === "approved" || o.status === "delivered");
-  const totalBalance = approvedOrders.reduce((sum, order) => sum + parseFloat(order.balance.toString()), 0);
+  const totalBalance = approvedOrders.reduce((sum, order) => {
+    const balance = order.balance ? parseFloat(order.balance.toString()) : 0;
+    return sum + balance;
+  }, 0);
   const totalPaid = payments
     .filter(p => p.status === "completed")
-    .reduce((sum, payment) => sum + parseFloat(payment.amount.toString()), 0);
-  const availableCredit = profile ? parseFloat(profile.availableCredit.toString()) : 0;
+    .reduce((sum, payment) => {
+      const amount = payment.amount ? parseFloat(payment.amount.toString()) : 0;
+      return sum + amount;
+    }, 0);
+  const availableCredit = profile?.availableCredit ? parseFloat(profile.availableCredit.toString()) : 0;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: any }> = {
@@ -195,6 +357,14 @@ export default function FarmerDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        )}
+        
+        {!isLoading && (
+          <>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
@@ -299,29 +469,42 @@ export default function FarmerDashboard() {
                         {getStatusBadge(order.status)}
                       </div>
                       <CardDescription>
-                        Created {format(new Date(order.createdAt), "MMM dd, yyyy")}
+                        Created {formatDate(order.createdAt, "MMM dd, yyyy")}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Total Cost</p>
-                          <p className="font-semibold">{formatCurrency(parseFloat(order.totalCost))}</p>
+                          <p className="font-semibold">{formatCurrency(parseFloat(order.totalCost || "0"))}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Down Payment</p>
-                          <p className="font-semibold">{formatCurrency(parseFloat(order.downPayment))}</p>
+                          <p className="font-semibold">{formatCurrency(parseFloat(order.downPayment || "0"))}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Balance</p>
-                          <p className="font-semibold">{formatCurrency(parseFloat(order.balance))}</p>
+                          <p className="font-semibold">{formatCurrency(parseFloat(order.balance || "0"))}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Due Date</p>
-                          <p className="font-semibold">{format(new Date(order.dueDate), "MMM dd, yyyy")}</p>
+                          <p className="font-semibold">{formatDate(order.dueDate, "MMM dd, yyyy")}</p>
                         </div>
                       </div>
-                      {order.status === "approved" && parseFloat(order.balance) > 0 && (
+                      {order.items && order.items.length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <p className="text-sm font-medium mb-2">Order Items:</p>
+                          <div className="space-y-1">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="text-xs flex justify-between">
+                                <span>{item.product} (x{item.quantity})</span>
+                                <span className="text-muted-foreground">{formatCurrency(parseFloat(item.price || "0"))}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {order.status === "approved" && parseFloat(order.balance || "0") > 0 && (
                         <Button className="w-full" size="sm">
                           Make Payment
                         </Button>
@@ -349,13 +532,18 @@ export default function FarmerDashboard() {
                   <div className="divide-y">
                     {payments.map((payment) => (
                       <div key={payment.id} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{formatCurrency(parseFloat(payment.amount))}</p>
+                        <div className="flex-1">
+                          <p className="font-medium">{formatCurrency(parseFloat(payment.amount || "0"))}</p>
                           <p className="text-sm text-muted-foreground">
                             {payment.paymentType.replace("_", " ").toUpperCase()} • {payment.paymentMethod}
                           </p>
+                          {payment.orderId && (
+                            <p className="text-xs text-muted-foreground">
+                              Order #{payment.orderId.slice(0, 8)}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
-                            {format(new Date(payment.createdAt), "MMM dd, yyyy HH:mm")}
+                            {formatDate(payment.createdAt, "MMM dd, yyyy HH:mm")}
                           </p>
                         </div>
                         {getStatusBadge(payment.status)}
@@ -373,6 +561,38 @@ export default function FarmerDashboard() {
               <h2 className="text-2xl font-bold">My Profile</h2>
               {profile && getKycBadge(profile.kycStatus)}
             </div>
+
+            {profile?.kycStatus === 'pending' && (
+              <Card className="bg-yellow-50 border-yellow-200">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-yellow-900">KYC Verification Pending</p>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Your account is under review. You'll be notified once verification is complete.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {profile?.kycStatus === 'rejected' && (
+              <Card className="bg-red-50 border-red-200">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-red-900">KYC Verification Failed</p>
+                      <p className="text-sm text-red-700 mt-1">
+                        Please contact support or your agent for assistance.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
@@ -423,6 +643,7 @@ export default function FarmerDashboard() {
                 </CardContent>
               </Card>
 
+              {profile?.guarantorName && (
               <Card>
                 <CardHeader>
                   <CardTitle>Guarantor Information</CardTitle>
@@ -430,11 +651,11 @@ export default function FarmerDashboard() {
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-medium">{profile?.guarantorName}</p>
+                    <p className="font-medium">{profile?.guarantorName || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
-                    <p className="font-medium">{profile?.guarantorPhone}</p>
+                    <p className="font-medium">{profile?.guarantorPhone || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Type</p>
@@ -444,6 +665,7 @@ export default function FarmerDashboard() {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               <Card>
                 <CardHeader>
@@ -466,15 +688,114 @@ export default function FarmerDashboard() {
               </Card>
             </div>
 
-            <Button variant="outline" className="w-full">
-              <Upload className="w-4 h-4 mr-2" />
-              Update Profile Information
-            </Button>
+            <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full" onClick={handleOpenUpdateDialog}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Update Profile Information
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Update Profile</DialogTitle>
+                  <DialogDescription>
+                    Update your profile information. Some fields like name and credit information can only be changed by administrators.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={updateFormData.phone}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, phone: e.target.value })}
+                      placeholder="+234..."
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="farmSize">Farm Size (hectares)</Label>
+                    <Input
+                      id="farmSize"
+                      value={updateFormData.farmSize}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, farmSize: e.target.value })}
+                      placeholder="e.g., 5"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="farmLocation">Farm Location</Label>
+                    <Input
+                      id="farmLocation"
+                      value={updateFormData.farmLocation}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, farmLocation: e.target.value })}
+                      placeholder="e.g., Lagos State"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="cropTypes">Crop Types (comma-separated)</Label>
+                    <Input
+                      id="cropTypes"
+                      value={Array.isArray(updateFormData.cropTypes) ? updateFormData.cropTypes.join(', ') : updateFormData.cropTypes}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, cropTypes: e.target.value.split(',').map(s => s.trim()) })}
+                      placeholder="e.g., Rice, Maize, Cassava"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="idType">ID Type</Label>
+                    <Select
+                      value={updateFormData.idType}
+                      onValueChange={(value) => setUpdateFormData({ ...updateFormData, idType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select ID type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="national_id">National ID</SelectItem>
+                        <SelectItem value="voters_card">Voter's Card</SelectItem>
+                        <SelectItem value="drivers_license">Driver's License</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="idNumber">ID Number</Label>
+                    <Input
+                      id="idNumber"
+                      value={updateFormData.idNumber}
+                      onChange={(e) => setUpdateFormData({ ...updateFormData, idNumber: e.target.value })}
+                      placeholder="Enter ID number"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" onClick={() => setIsUpdateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => updateProfileMutation.mutate(updateFormData)}
+                    disabled={updateProfileMutation.isPending}
+                  >
+                    {updateProfileMutation.isPending ? "Updating..." : "Update Profile"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-4">
-            <h2 className="text-2xl font-bold">Notifications</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Notifications</h2>
+              {unreadCount > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleMarkAllAsRead}
+                  disabled={markAsReadMutation.isPending}
+                >
+                  <CheckCheck className="w-4 h-4 mr-2" />
+                  Mark all as read
+                </Button>
+              )}
+            </div>
             {notifications.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
@@ -501,11 +822,19 @@ export default function FarmerDashboard() {
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{notif.message}</p>
                             <p className="text-xs text-muted-foreground mt-2">
-                              {format(new Date(notif.createdAt), "MMM dd, yyyy HH:mm")}
+                              {formatDate(notif.createdAt, "MMM dd, yyyy HH:mm")}
                             </p>
                           </div>
                           {!notif.isRead && (
-                            <Button size="sm" variant="ghost">Mark as read</Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleMarkAsRead(notif.id)}
+                              disabled={markAsReadMutation.isPending}
+                              title="Mark as read"
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -516,6 +845,8 @@ export default function FarmerDashboard() {
             )}
           </TabsContent>
         </Tabs>
+        </>
+        )}
       </main>
     </div>
   );

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
 import { 
   LogOut, 
   Users, 
@@ -16,7 +17,8 @@ import {
   TrendingDown,
   AlertCircle,
   FileText,
-  Settings
+  Settings,
+  Package
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { formatCurrency } from "@shared/logic/paymentUtils";
@@ -28,6 +30,7 @@ import PaymentsManagement from "@/components/admin/PaymentsManagement";
 import KycManagement from "@/components/admin/KycManagement";
 import ReportsAnalytics from "@/components/admin/ReportsAnalytics";
 import AddUsers from "@/components/admin/AddUsers";
+import AdminProducts from "@/pages/AdminProducts";
 
 interface AdminStats {
   totalFarmers: number;
@@ -55,8 +58,8 @@ export default function AdminDashboard() {
   const { data: statsData, isLoading } = useQuery<{ stats: AdminStats }>({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/admin-stats", {
-        credentials: "include", // ✅ FIX: ensures cookies/sessions are included
+      const response = await fetch(API_ENDPOINTS.adminStats, {
+        headers: getSupabaseHeaders(),
       });
 
       if (!response.ok) throw new Error("Failed to fetch stats");
@@ -65,8 +68,12 @@ export default function AdminDashboard() {
   });
 
   const handleLogout = async () => {
-    await logout();
-    setLocation('/');
+    try {
+      await logout();
+      setLocation('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const stats = statsData?.stats;
@@ -221,11 +228,12 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-8 w-full lg:w-auto">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-9 w-full lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="add-users">Add Users</TabsTrigger>
             <TabsTrigger value="farmers">Farmers</TabsTrigger>
             <TabsTrigger value="agents">Agents</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="kyc">KYC Review</TabsTrigger>
@@ -246,6 +254,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="agents">
             <AgentsManagement />
+          </TabsContent>
+
+          <TabsContent value="products">
+            <AdminProducts />
           </TabsContent>
 
           <TabsContent value="orders">

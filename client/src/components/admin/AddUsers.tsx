@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -96,9 +97,9 @@ export default function AddUsers() {
 
   const createUserMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/.netlify/functions/admin-create-user", {
+      const response = await fetch(API_ENDPOINTS.adminCreateUser, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getSupabaseHeaders(),
         body: JSON.stringify(data),
       });
 

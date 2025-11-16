@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,9 @@ export default function AgentsManagement() {
   const { data: agentsData, isLoading } = useQuery({
     queryKey: ["admin-agents"],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/admin-agents");
+      const response = await fetch(API_ENDPOINTS.adminAgents, {
+        headers: getSupabaseHeaders(),
+      });
       if (!response.ok) throw new Error("Failed to fetch agents");
       return response.json();
     },

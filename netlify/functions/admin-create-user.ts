@@ -28,6 +28,33 @@ const generatePassword = (): string => {
   return password;
 };
 
+// ✨ EDIT START — added E.164 formatter + validator
+function normalizePhoneE164(input: string): string | null {
+  if (!input) return null;
+
+  // Remove spaces, parentheses, hyphens
+  const digits = input.replace(/[^\d+]/g, "");
+
+  // If already starts with + and has 10–15 digits, accept it
+  if (/^\+\d{10,15}$/.test(digits)) {
+    return digits;
+  }
+
+  // If starts with 0 (e.g., 0803…), convert to +234 (Nigeria example)
+  if (/^0\d{10}$/.test(digits)) {
+    return "+234" + digits.substring(1);
+  }
+
+  // If starts with digits only and length looks like a Nigerian number
+  if (/^\d{10,11}$/.test(digits)) {
+    return "+234" + digits.substring(digits.length - 10);
+  }
+
+  // Not valid
+  return null;
+}
+// ✨ EDIT END
+
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
   console.log("Function called:", event.httpMethod, event.path);
   console.log("Environment check:", {
@@ -51,7 +78,22 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Parse request body
     const { userType, ...userData } = JSON.parse(event.body || "{}");
 
-    // Generate password (Supabase Auth will handle hashing)
+    // ✨ EDIT START — Normalize phone before doing anything
+    const normalizedPhone = normalizePhoneE164(userData.phone);
+    if (!normalizedPhone) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+        body: JSON.stringify({ error: "Invalid phone format. Use a valid phone number." }),
+      };
+    }
+    // We overwrite the original phone with the normalized value
+    userData.phone = normalizedPhone;
+    // ✨ EDIT END
+
     const generatedPassword = generatePassword();
 
     if (userType === "farmer") {
@@ -67,7 +109,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Check if phone already exists in farmer profiles
+      // Check if phone exists
       const { data: existingFarmer } = await supabase
         .from("farmer_profiles")
         .select("id")
@@ -85,15 +127,17 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Create user with Supabase Auth
-      const email = userData.email && userData.email.trim() ? userData.email.trim() : `${userData.phone.replace(/\+/g, '')}@gladfore-temp.com`;
-      
+      // Create user with normalized phone
+      const email = userData.email && userData.email.trim()
+        ? userData.email.trim()
+        : `${userData.phone.replace(/\+/g, '')}@gladfore-temp.com`;
+
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: email,
         password: generatedPassword,
-        phone: userData.phone,
-        email_confirm: true, // Auto-confirm email for admin-created users
-        phone_confirm: true, // Auto-confirm phone for admin-created users
+        phone: userData.phone, // already normalized
+        email_confirm: true,
+        phone_confirm: true,
         user_metadata: {
           full_name: userData.fullName,
           role: "farmer",
@@ -107,11 +151,9 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         throw new Error(`Failed to create auth user: ${authError.message}`);
       }
 
-      if (!authUser.user) {
-        throw new Error("No user returned from Supabase Auth");
-      }
+      if (!authUser.user) throw new Error("No user returned from Supabase Auth");
 
-      // Update the user's profile in auth.users table with additional metadata
+      // Update metadata
       const { error: updateError } = await supabase.auth.admin.updateUserById(
         authUser.user.id,
         {
@@ -125,25 +167,22 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       );
 
-      if (updateError) {
-        console.warn("Failed to update user metadata:", updateError);
-      }
+      if (updateError) console.warn("Failed to update user metadata:", updateError);
 
-      // Also create user in the users table (for foreign key relationships)
+      // Create user row
       const { error: usersTableError } = await supabase
         .from("users")
         .insert({
-          id: authUser.user.id, // Use same ID as auth.users
+          id: authUser.user.id,
           email: email,
           phone: userData.phone,
-          password_hash: "", // Not needed since we use Supabase Auth
+          password_hash: "",
           role: "farmer",
           is_active: true
         });
 
       if (usersTableError) {
         console.error("Failed to create user in users table:", usersTableError);
-        // Try to clean up the auth user
         await supabase.auth.admin.deleteUser(authUser.user.id);
         throw new Error(`Failed to create user record: ${usersTableError.message}`);
       }
@@ -151,17 +190,17 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const user = {
         id: authUser.user.id,
         email: authUser.user.email,
-        phone: authUser.user.phone || userData.phone,
+        phone: userData.phone,
         role: "farmer"
       };
 
-      // Create farmer profile linked to auth user
+      // Create farmer profile
       const { data: farmerProfile, error: profileError } = await supabase
         .from("farmer_profiles")
         .insert({
-          user_id: user.id, // This now links to auth.users.id
+          user_id: user.id,
           full_name: userData.fullName,
-          phone: userData.phone,
+          phone: userData.phone, // normalized
           farm_size: userData.farmSize,
           farm_location: userData.farmLocation,
           crop_types: userData.cropTypes || [],
@@ -183,7 +222,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       // Create notification
       await supabase.from("notifications").insert({
-        user_id: user.id, // Auth user ID
+        user_id: user.id,
         farmer_id: farmerProfile.id,
         title: "Welcome to Gladfore!",
         message: userData.autoApproveKyc
@@ -192,7 +231,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         type: "general",
       });
 
-      // Create audit log
+      // Audit log
       await supabase.from("audit_logs").insert({
         action: "farmer_created",
         entity_type: "farmer",
@@ -222,9 +261,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           },
         }),
       };
+    }
 
-    } else if (userType === "agent") {
-      // Validate required fields
+    // AGENT BRANCH — same phone normalization applies automatically because we overwrote userData.phone
+    else if (userType === "agent") {
+
       if (!userData.fullName || !userData.phone || !userData.region) {
         return {
           statusCode: 400,
@@ -236,7 +277,6 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Check if phone already exists in agent profiles
       const { data: existingAgent } = await supabase
         .from("agent_profiles")
         .select("id")
@@ -254,15 +294,16 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Create user with Supabase Auth
-      const email = userData.email && userData.email.trim() ? userData.email.trim() : `${userData.phone.replace(/\+/g, '')}@gladfore-temp.com`;
-      
+      const email = userData.email && userData.email.trim()
+        ? userData.email.trim()
+        : `${userData.phone.replace(/\+/g, '')}@gladfore-temp.com`;
+
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: email,
         password: generatedPassword,
-        phone: userData.phone,
-        email_confirm: true, // Auto-confirm email for admin-created users
-        phone_confirm: true, // Auto-confirm phone for admin-created users
+        phone: userData.phone, // normalized
+        email_confirm: true,
+        phone_confirm: true,
         user_metadata: {
           full_name: userData.fullName,
           role: "agent",
@@ -276,12 +317,9 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         throw new Error(`Failed to create auth user: ${authError.message}`);
       }
 
-      if (!authUser.user) {
-        throw new Error("No user returned from Supabase Auth");
-      }
+      if (!authUser.user) throw new Error("No user returned from Supabase Auth");
 
-      // Update the user's profile in auth.users table with additional metadata
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
+      await supabase.auth.admin.updateUserById(
         authUser.user.id,
         {
           user_metadata: {
@@ -294,25 +332,18 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         }
       );
 
-      if (updateError) {
-        console.warn("Failed to update user metadata:", updateError);
-      }
-
-      // Also create user in the users table (for foreign key relationships)
       const { error: usersTableError } = await supabase
         .from("users")
         .insert({
-          id: authUser.user.id, // Use same ID as auth.users
+          id: authUser.user.id,
           email: email,
           phone: userData.phone,
-          password_hash: "", // Not needed since we use Supabase Auth
+          password_hash: "",
           role: "agent",
           is_active: true
         });
 
       if (usersTableError) {
-        console.error("Failed to create user in users table:", usersTableError);
-        // Try to clean up the auth user
         await supabase.auth.admin.deleteUser(authUser.user.id);
         throw new Error(`Failed to create user record: ${usersTableError.message}`);
       }
@@ -320,15 +351,14 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const user = {
         id: authUser.user.id,
         email: authUser.user.email,
-        phone: authUser.user.phone || userData.phone,
+        phone: userData.phone,
         role: "agent"
       };
 
-      // Create agent profile linked to auth user  
       const { data: agentProfile, error: profileError } = await supabase
         .from("agent_profiles")
         .insert({
-          user_id: user.id, // This now links to auth.users.id
+          user_id: user.id,
           full_name: userData.fullName,
           phone: userData.phone,
           region: userData.region,
@@ -344,16 +374,14 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
 
       if (profileError) throw profileError;
 
-      // Create notification
       await supabase.from("notifications").insert({
-        user_id: user.id, // Auth user ID
+        user_id: user.id,
         agent_id: agentProfile.id,
         title: "Welcome to Gladfore Agent Network!",
         message: `Your agent account has been created. Commission rate: ${userData.commissionRate || "2.5"}%`,
         type: "general",
       });
 
-      // Create audit log
       await supabase.from("audit_logs").insert({
         action: "agent_created",
         entity_type: "agent",
@@ -382,8 +410,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           },
         }),
       };
+    }
 
-    } else {
+    // Invalid user type
+    else {
       return {
         statusCode: 400,
         headers: {

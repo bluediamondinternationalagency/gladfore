@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,7 +33,9 @@ export default function PaymentsManagement() {
   const { data: paymentsData, isLoading } = useQuery({
     queryKey: ["admin-payments"],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/admin-payments");
+      const response = await fetch(API_ENDPOINTS.adminPayments, {
+        headers: getSupabaseHeaders(),
+      });
       if (!response.ok) throw new Error("Failed to fetch payments");
       return response.json();
     },

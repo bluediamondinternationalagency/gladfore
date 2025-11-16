@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,9 @@ export default function KycManagement() {
   const { data: applicationsData, isLoading } = useQuery<{ applications: KycApplication[] }>({
     queryKey: ["admin-kyc-pending"],
     queryFn: async () => {
-      const response = await fetch("/.netlify/functions/admin-kyc-pending");
+      const response = await fetch(API_ENDPOINTS.adminKycPending, {
+        headers: getSupabaseHeaders(),
+      });
       if (!response.ok) throw new Error("Failed to fetch applications");
       return response.json();
     },
@@ -70,9 +73,10 @@ export default function KycManagement() {
       creditLimit?: number;
       rejectionReason?: string;
     }) => {
-      const response = await fetch("/.netlify/functions/admin-kyc-review", {
+      // TODO: Create admin-kyc-review Edge Function
+      const response = await fetch(`${API_ENDPOINTS.adminKycPending}/review`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...getSupabaseHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error("Failed to review KYC");

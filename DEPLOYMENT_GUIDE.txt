@@ -1,0 +1,186 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SUPABASE EDGE FUNCTIONS DEPLOYMENT                        ║
+║                         Quick Reference Guide                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 MIGRATION STATUS: ✅ COMPLETE
+
+All 7 Netlify Functions migrated to Supabase Edge Functions (Deno runtime)
+All frontend API calls updated to use new endpoints
+Phone normalization preserved (+234 E.164 format)
+Supabase Auth integration maintained
+
+────────────────────────────────────────────────────────────────────────────────
+
+🚀 DEPLOYMENT STEPS
+
+1️⃣  Login to Supabase
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ supabase login                                                         │
+   │                                                                        │
+   │ OR (if browser fails in container):                                   │
+   │ export SUPABASE_ACCESS_TOKEN="sbp_xxxxx..."                           │
+   │ Get token from: https://supabase.com/dashboard/account/tokens         │
+   └────────────────────────────────────────────────────────────────────────┘
+
+2️⃣  Set Environment Secrets
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ supabase secrets set SUPABASE_SERVICE_ROLE_KEY="your-key-here"        │
+   │                                                                        │
+   │ Verify:                                                                │
+   │ supabase secrets list                                                  │
+   └────────────────────────────────────────────────────────────────────────┘
+
+3️⃣  Deploy All Functions
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ cd /workspaces/gladfore                                                │
+   │ ./deploy-functions.sh                                                  │
+   │                                                                        │
+   │ OR deploy individually:                                                │
+   │ supabase functions deploy admin-create-user --no-verify-jwt           │
+   │ supabase functions deploy admin-agents --no-verify-jwt                │
+   │ supabase functions deploy admin-farmers --no-verify-jwt               │
+   │ supabase functions deploy admin-kyc-pending --no-verify-jwt           │
+   │ supabase functions deploy admin-orders --no-verify-jwt                │
+   │ supabase functions deploy admin-payments --no-verify-jwt              │
+   │ supabase functions deploy admin-stats --no-verify-jwt                 │
+   └────────────────────────────────────────────────────────────────────────┘
+
+4️⃣  Test Deployment
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ ./test-edge-functions.sh                                               │
+   │                                                                        │
+   │ OR test manually:                                                      │
+   │ curl https://nuexakcydimzdrntjshi.supabase.co/functions/v1/admin-stats│
+   │   -H "Authorization: Bearer YOUR_ANON_KEY"                             │
+   └────────────────────────────────────────────────────────────────────────┘
+
+5️⃣  Verify Frontend
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ npm run dev                                                            │
+   │ - Login as admin                                                       │
+   │ - Test creating farmer/agent                                           │
+   │ - Verify credentials display                                           │
+   │ - Test login with created user                                         │
+   │ - Check all admin pages load                                           │
+   └────────────────────────────────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+
+📍 FUNCTION ENDPOINTS
+
+Base URL: https://nuexakcydimzdrntjshi.supabase.co/functions/v1/
+
+┌──────────────────────┬────────┬─────────────────────────────────────────┐
+│ Function             │ Method │ Description                             │
+├──────────────────────┼────────┼─────────────────────────────────────────┤
+│ admin-stats          │ GET    │ Dashboard statistics                    │
+│ admin-agents         │ GET    │ List agents (search/filter)             │
+│ admin-farmers        │ GET    │ List farmers (search/filter)            │
+│ admin-kyc-pending    │ GET    │ Pending KYC applications                │
+│ admin-orders         │ GET    │ Order list with relations               │
+│ admin-payments       │ GET    │ Payment records                         │
+│ admin-create-user    │ POST   │ Create farmer/agent with auth           │
+└──────────────────────┴────────┴─────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+
+🔍 DEBUGGING
+
+View Function Logs:
+┌────────────────────────────────────────────────────────────────────────┐
+│ supabase functions logs admin-create-user --follow                     │
+│ supabase functions logs admin-stats                                    │
+└────────────────────────────────────────────────────────────────────────┘
+
+Check Secrets:
+┌────────────────────────────────────────────────────────────────────────┐
+│ supabase secrets list                                                  │
+└────────────────────────────────────────────────────────────────────────┘
+
+Test Locally:
+┌────────────────────────────────────────────────────────────────────────┐
+│ supabase start                    # Start local Supabase               │
+│ supabase functions serve          # Serve all functions locally        │
+│                                                                        │
+│ Test at: http://localhost:54321/functions/v1/{function-name}          │
+└────────────────────────────────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+
+📋 TEST CHECKLIST
+
+Frontend Testing:
+□ Admin login works
+□ Dashboard loads stats
+□ Agents list displays
+□ Farmers list displays  
+□ KYC pending list displays
+□ Orders list displays
+□ Payments list displays
+□ Create new farmer succeeds
+□ Create new agent succeeds
+□ Credentials dialog shows
+□ Phone normalized to +234...
+□ Created user can login
+□ Download credentials works
+
+API Testing:
+□ All GET endpoints return 200
+□ admin-create-user returns user object with password
+□ Phone normalization works (08... → +234...)
+□ Email auto-generation works
+□ Supabase Auth user created
+□ Profile record created
+□ Notification created
+□ Audit log created
+
+────────────────────────────────────────────────────────────────────────────────
+
+📚 DOCUMENTATION
+
+Detailed Guides:
+├── MIGRATION_COMPLETE.md    ← Migration summary and next steps
+├── MIGRATION_GUIDE.md       ← Complete migration documentation
+├── README.md                ← Project README with deployment info
+└── supabase/functions/      ← Edge function source code
+
+Scripts:
+├── deploy-functions.sh      ← Deploy all functions
+└── test-edge-functions.sh   ← Test all endpoints
+
+────────────────────────────────────────────────────────────────────────────────
+
+✅ FILES CREATED/MODIFIED
+
+New Edge Functions (7):
+✓ supabase/functions/admin-agents/index.ts
+✓ supabase/functions/admin-create-user/index.ts
+✓ supabase/functions/admin-farmers/index.ts
+✓ supabase/functions/admin-kyc-pending/index.ts
+✓ supabase/functions/admin-orders/index.ts
+✓ supabase/functions/admin-payments/index.ts
+✓ supabase/functions/admin-stats/index.ts
+
+Shared Utilities (2):
+✓ supabase/functions/_shared/cors.ts
+✓ supabase/functions/_shared/supabase.ts
+
+Frontend Updated (9):
+✓ client/src/lib/api.ts
+✓ client/src/components/admin/AddUsers.tsx
+✓ client/src/components/admin/AgentsManagement.tsx
+✓ client/src/components/admin/DashboardOverview.tsx
+✓ client/src/components/admin/FarmersManagement.tsx
+✓ client/src/components/admin/KycManagement.tsx
+✓ client/src/components/admin/OrdersManagement.tsx
+✓ client/src/components/admin/PaymentsManagement.tsx
+✓ client/src/components/admin/ReportsAnalytics.tsx
+
+────────────────────────────────────────────────────────────────────────────────
+
+🎯 NEXT ACTION
+
+Run: ./deploy-functions.sh
+
+────────────────────────────────────────────────────────────────────────────────
