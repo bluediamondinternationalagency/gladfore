@@ -11,6 +11,7 @@ import CreateUserPage from "@/pages/CreateUserPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AgentDashboard from "@/pages/AgentDashboard";
 import FarmerDashboard from "@/pages/FarmerDashboard";
+import SuperAgentDashboard from "@/pages/SuperAgentDashboard";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/create-user" component={CreateUserPage} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/agent" component={AgentDashboard} />
+      <Route path="/super-agent" component={SuperAgentDashboard} />
       <Route path="/farmer" component={FarmerDashboard} />
       <Route component={NotFound} />
     </Switch>

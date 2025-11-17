@@ -194,6 +194,27 @@ serve(async (req) => {
       // Don't rollback the order, just log the error
     }
 
+    // Get super agent for this agent (if assigned)
+    const { data: assignment } = await supabase
+      .from('agent_assignments')
+      .select('super_agent_id')
+      .eq('agent_id', user.id)
+      .single()
+
+    // Create notification for super agent (if assigned)
+    if (assignment?.super_agent_id) {
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: assignment.super_agent_id,
+          title: 'New Order Pending Review',
+          type: 'order_pending_super_agent',
+          message: `New order #${order.id.substring(0, 8)} from agent needs your review. Total: ₦${totalCost.toFixed(2)}.`,
+          related_id: order.id,
+          is_read: false
+        })
+    }
+
     // Create notification for farmer
     const { error: notifError } = await supabase
       .from('notifications')

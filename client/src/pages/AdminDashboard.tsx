@@ -27,10 +27,12 @@ import FarmersManagement from "@/components/admin/FarmersManagement";
 import AgentsManagement from "@/components/admin/AgentsManagement";
 import OrdersManagement from "@/components/admin/OrdersManagement";
 import PaymentsManagement from "@/components/admin/PaymentsManagement";
+import PaymentApprovals from "@/components/admin/PaymentApprovals";
 import KycManagement from "@/components/admin/KycManagement";
 import ReportsAnalytics from "@/components/admin/ReportsAnalytics";
 import AddUsers from "@/components/admin/AddUsers";
 import AdminProducts from "@/pages/AdminProducts";
+import SuperAgentManagement from "@/components/admin/SuperAgentManagement";
 
 interface AdminStats {
   totalFarmers: number;
@@ -228,14 +230,16 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-9 w-full lg:w-auto">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-11 w-full lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="add-users">Add Users</TabsTrigger>
             <TabsTrigger value="farmers">Farmers</TabsTrigger>
             <TabsTrigger value="agents">Agents</TabsTrigger>
+            <TabsTrigger value="super-agents">Super Agents</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="payment-approvals">Payment Approvals</TabsTrigger>
             <TabsTrigger value="kyc">KYC Review</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
@@ -256,6 +260,10 @@ export default function AdminDashboard() {
             <AgentsManagement />
           </TabsContent>
 
+          <TabsContent value="super-agents">
+            <SuperAgentManagement />
+          </TabsContent>
+
           <TabsContent value="products">
             <AdminProducts />
           </TabsContent>
@@ -266,6 +274,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="payments">
             <PaymentsManagement />
+          </TabsContent>
+
+          <TabsContent value="payment-approvals">
+            <PaymentApprovals />
           </TabsContent>
 
           <TabsContent value="kyc">

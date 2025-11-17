@@ -25,7 +25,9 @@ export default function LoginPage() {
         title: "Login successful",
         description: `Welcome back, ${user.name}!`,
       });
-      setLocation(`/${user.role}`);
+      // Handle super_agent role routing
+      const route = user.role === "super_agent" ? "/super-agent" : `/${user.role}`;
+      setLocation(route);
     },
     onError: (error: any) => {
       toast({

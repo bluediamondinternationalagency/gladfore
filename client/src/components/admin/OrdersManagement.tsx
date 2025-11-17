@@ -73,9 +73,12 @@ export default function OrdersManagement() {
         description: data.message || `Order ${variables.action}d successfully` 
       });
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      
+      // Reset all dialog state
       setActionDialogOpen(false);
       setActionReason("");
       setAdminNotes("");
+      setActionType(null);
       setSelectedOrder(null);
     },
     onError: (error: any) => {
@@ -84,6 +87,9 @@ export default function OrdersManagement() {
         description: error.message,
         variant: "destructive",
       });
+      
+      // Don't close dialog on error, but allow retry
+      // Reset loading state is handled by React Query
     },
   });
 
@@ -113,6 +119,24 @@ export default function OrdersManagement() {
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);
     setViewDetailsOpen(true);
+  };
+
+  const handleCloseActionDialog = (open: boolean) => {
+    setActionDialogOpen(open);
+    if (!open) {
+      // Reset all state when dialog is closed
+      setActionReason("");
+      setAdminNotes("");
+      setActionType(null);
+      setSelectedOrder(null);
+    }
+  };
+
+  const handleCloseViewDialog = (open: boolean) => {
+    setViewDetailsOpen(open);
+    if (!open) {
+      setSelectedOrder(null);
+    }
   };
 
   const confirmAction = () => {
@@ -267,7 +291,7 @@ export default function OrdersManagement() {
       </CardContent>
 
       {/* View Order Details Dialog */}
-      <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
+      <Dialog open={viewDetailsOpen} onOpenChange={handleCloseViewDialog}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
@@ -378,7 +402,7 @@ export default function OrdersManagement() {
       </Dialog>
 
       {/* Action Dialog */}
-      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+      <Dialog open={actionDialogOpen} onOpenChange={handleCloseActionDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -438,7 +462,7 @@ export default function OrdersManagement() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setActionDialogOpen(false)}
+              onClick={() => handleCloseActionDialog(false)}
               disabled={orderActionMutation.isPending}
             >
               Cancel
