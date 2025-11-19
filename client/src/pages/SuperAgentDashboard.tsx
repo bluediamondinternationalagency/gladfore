@@ -374,8 +374,8 @@ export default function SuperAgentDashboard() {
                     {approvedOrders.map((order: any) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-sm">{order.id.slice(0, 8)}</TableCell>
-                        <TableCell>{order.agent?.full_name}</TableCell>
-                        <TableCell>{order.farmer?.full_name}</TableCell>
+                        <TableCell>{order.agent_profiles?.full_name || 'N/A'}</TableCell>
+                        <TableCell>{order.farmer_profiles?.full_name || 'N/A'}</TableCell>
                         <TableCell>
                           ₦{parseFloat(order.total_cost).toLocaleString()}
                           <div className="text-sm text-muted-foreground">
@@ -433,8 +433,8 @@ export default function SuperAgentDashboard() {
                     {rejectedOrders.map((order: any) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-sm">{order.id.slice(0, 8)}</TableCell>
-                        <TableCell>{order.agent?.full_name}</TableCell>
-                        <TableCell>{order.farmer?.full_name}</TableCell>
+                        <TableCell>{order.agent_profiles?.full_name || 'N/A'}</TableCell>
+                        <TableCell>{order.farmer_profiles?.full_name || 'N/A'}</TableCell>
                         <TableCell>₦{parseFloat(order.total_cost).toLocaleString()}</TableCell>
                         <TableCell className="max-w-xs truncate">{order.super_agent_rejection_reason}</TableCell>
                         <TableCell>{format(new Date(order.super_agent_rejected_at), "MMM dd, yyyy")}</TableCell>

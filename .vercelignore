@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files (these should be set in Vercel dashboard)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+client/.env
+
+# Build output (except dist/public which Vercel needs)
+.netlify/
+server1/
+supabase/functions/
+supabase/migrations/
+
+# Development and test files
+*.test.ts
+*.test.tsx
+test-*.ts
+check-*.ts
+debug-*.ts
+apply-migration.ts
+
+# Documentation
+*.md
+!README.md
+
+# Configuration files not needed for deployment
+.replit
+replit.md
+netlify.toml
+drizzle.config.ts
+tsconfig.json
+
+# Database files
+*.sql
+*.tar.gz
+
+# Misc
+.git/
+.local/
+deno.lock
+deploy-functions.sh
+test_super_agent.sh
+test-edge-functions.sh

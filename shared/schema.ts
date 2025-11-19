@@ -84,18 +84,17 @@ export const agentAssignments = pgTable("agent_assignments", {
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: uuid("order_id").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  farmerId: uuid("farmer_id").notNull(),
+  agentId: uuid("agent_id"),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentType: text("payment_type").notNull(),
   paymentMethod: text("payment_method"),
-  receiptNumber: text("receipt_number"),
-  recordedBy: uuid("recorded_by").notNull(),
-  recordedAt: timestamp("recorded_at").notNull().default(sql`now()`),
-  approvedBy: uuid("approved_by"),
-  approvedAt: timestamp("approved_at"),
-  rejectedBy: uuid("rejected_by"),
-  rejectedAt: timestamp("rejected_at"),
-  rejectionReason: text("rejection_reason"),
+  paymentReference: text("payment_reference"),
   status: text("status").notNull().default("pending"),
+  processedAt: timestamp("processed_at"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -103,7 +102,7 @@ export const insertFarmerSchema = createInsertSchema(farmers).omit({ id: true })
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
 export const insertSuperAgentProfileSchema = createInsertSchema(superAgentProfiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAgentAssignmentSchema = createInsertSchema(agentAssignments).omit({ id: true, assignedAt: true });
-export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, recordedAt: true, createdAt: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
