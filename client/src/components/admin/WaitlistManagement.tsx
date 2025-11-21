@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { API_ENDPOINTS, getSupabaseHeaders } from "@/lib/api";
+import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@shared/logic/paymentUtils";
 import { format } from "date-fns";
@@ -83,37 +83,47 @@ export default function WaitlistManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: waitlistData, isLoading } = useQuery<{ entries: WaitlistEntry[] }>({
+  const { data: waitlistData, isLoading, error } = useQuery<{ entries: WaitlistEntry[] }>({
     queryKey: ["admin-waitlist", filterStatus, filterType],
     queryFn: async () => {
-      let url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/waitlist?select=*&order=created_at.desc`;
+      let query = supabase
+        .from('waitlist')
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (filterStatus !== "all") {
-        url += `&status=eq.${filterStatus}`;
+        query = query.eq('status', filterStatus);
       }
       if (filterType !== "all") {
-        url += `&user_type=eq.${filterType}`;
+        query = query.eq('user_type', filterType);
       }
 
-      const response = await fetch(url, {
-        headers: getSupabaseHeaders(),
-      });
+      const { data, error } = await query;
       
-      if (!response.ok) throw new Error("Failed to fetch waitlist");
-      const entries = await response.json();
-      return { entries };
+      if (error) {
+        console.error('Failed to fetch waitlist:', error);
+        throw new Error(error.message);
+      }
+      
+      return { entries: data || [] };
     },
   });
 
   const approveMutation = useMutation({
     mutationFn: async (data: { entryId: string; creditLimit?: number }) => {
-      const response = await fetch(`${API_ENDPOINTS.adminKycPending}/approve-waitlist`, {
-        method: "POST",
-        headers: { ...getSupabaseHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to approve entry");
-      return response.json();
+      const { data: result, error } = await supabase
+        .from('waitlist')
+        .update({
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', data.entryId)
+        .select();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-waitlist"] });
@@ -135,13 +145,20 @@ export default function WaitlistManagement() {
 
   const rejectMutation = useMutation({
     mutationFn: async (data: { entryId: string; reason: string }) => {
-      const response = await fetch(`${API_ENDPOINTS.adminKycPending}/reject-waitlist`, {
-        method: "POST",
-        headers: { ...getSupabaseHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to reject entry");
-      return response.json();
+      const { data: result, error } = await supabase
+        .from('waitlist')
+        .update({
+          status: 'rejected',
+          rejection_reason: data.reason,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', data.entryId)
+        .select();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-waitlist"] });
