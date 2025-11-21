@@ -26,7 +26,8 @@ import {
   BarChart3,
   Shield,
   Menu,
-  X
+  X,
+  ClipboardList
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { formatCurrency } from "@shared/logic/paymentUtils";
@@ -36,7 +37,8 @@ import AgentsManagement from "@/components/admin/AgentsManagement";
 import OrdersManagement from "@/components/admin/OrdersManagement";
 import PaymentsManagement from "@/components/admin/PaymentsManagement";
 import PaymentApprovals from "@/components/admin/PaymentApprovals";
-import KycManagement from "@/components/admin/KycManagement";
+import ModernKycManagement from "@/components/admin/ModernKycManagement";
+import WaitlistManagement from "@/components/admin/WaitlistManagement";
 import ReportsAnalytics from "@/components/admin/ReportsAnalytics";
 import AddUsers from "@/components/admin/AddUsers";
 import AdminProducts from "@/pages/AdminProducts";
@@ -96,6 +98,7 @@ export default function AdminDashboard() {
 
   const navigationItems: NavItem[] = [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+    { id: "waitlist", label: "Waitlist", icon: ClipboardList },
     { id: "add-users", label: "Add Users", icon: UserPlus },
     { id: "farmers", label: "Farmers", icon: Users },
     { id: "agents", label: "Agents", icon: UserCheck },
@@ -112,6 +115,8 @@ export default function AdminDashboard() {
     switch (activeView) {
       case "overview":
         return <DashboardOverview stats={stats} />;
+      case "waitlist":
+        return <WaitlistManagement />;
       case "add-users":
         return <AddUsers />;
       case "farmers":
@@ -129,7 +134,7 @@ export default function AdminDashboard() {
       case "payment-approvals":
         return <PaymentApprovals />;
       case "kyc":
-        return <KycManagement />;
+        return <ModernKycManagement />;
       case "reports":
         return <ReportsAnalytics />;
       default:

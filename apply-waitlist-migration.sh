@@ -1,0 +1,30 @@
+#!/bin/bash
+
+echo "🚀 Applying Waitlist Migration to Supabase"
+echo "==========================================="
+echo ""
+echo "To apply this migration, please:"
+echo "1. Go to https://supabase.com/dashboard/project/nuexakcydimzdrntjshi/sql/new"
+echo "2. Copy the contents of: supabase/migrations/20251121000000_create_waitlist.sql"
+echo "3. Paste into the SQL editor"
+echo "4. Click 'Run' to execute"
+echo ""
+echo "The migration will create:"
+echo "  ✓ waitlist table with comprehensive farmer/agent fields"
+echo "  ✓ Indexes for performance (status, user_type, phone, email, NIN)"
+echo "  ✓ Row Level Security policies"
+echo "  ✓ Auto-update timestamp trigger"
+echo "  ✓ get_waitlist_stats() function"
+echo ""
+echo "📄 Migration file location:"
+echo "   $(pwd)/supabase/migrations/20251121000000_create_waitlist.sql"
+echo ""
+
+# Display first few lines of migration
+echo "Preview of migration SQL:"
+echo "========================"
+head -30 supabase/migrations/20251121000000_create_waitlist.sql
+echo ""
+echo "... (see full file for complete migration) ..."
+echo ""
+echo "✅ Ready to apply!"
