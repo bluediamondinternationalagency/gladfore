@@ -112,7 +112,7 @@ export default function SuperAgentManagement() {
 
   // Assign agents mutation
   const assignMutation = useMutation({
-    mutationFn: async ({ superAgentId, agentIds }: { superAgentId: string; agentIds: string[] }) => {
+    mutationFn: async ({ superAgentId, agentIds }: { superAgentId: string | null; agentIds: string[] }) => {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-assign-agents`,
@@ -172,6 +172,20 @@ export default function SuperAgentManagement() {
     }
     assignMutation.mutate({
       superAgentId: selectedSuperAgent.user_id,
+      agentIds: selectedAgents,
+    });
+  };
+
+  const handleUnassignAgents = () => {
+    if (selectedAgents.length === 0) {
+      toast({
+        title: "Please select at least one agent",
+        variant: "destructive",
+      });
+      return;
+    }
+    assignMutation.mutate({
+      superAgentId: null,
       agentIds: selectedAgents,
     });
   };
@@ -372,6 +386,14 @@ export default function SuperAgentManagement() {
               }}
             >
               Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleUnassignAgents}
+              disabled={assignMutation.isPending || selectedAgents.length === 0}
+            >
+              {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Unassign {selectedAgents.length} Agent(s)
             </Button>
             <Button onClick={handleAssignAgents} disabled={assignMutation.isPending || selectedAgents.length === 0}>
               {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

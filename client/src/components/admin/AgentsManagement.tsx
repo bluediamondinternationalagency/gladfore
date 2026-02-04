@@ -66,6 +66,7 @@ export default function AgentsManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Region</TableHead>
+                <TableHead>Super Agent</TableHead>
                 <TableHead>Total Sales</TableHead>
                 <TableHead>Commission Rate</TableHead>
                 <TableHead>Status</TableHead>
@@ -74,10 +75,15 @@ export default function AgentsManagement() {
             </TableHeader>
             <TableBody>
               {filteredAgents.map((agent: any) => (
+                (() => {
+                  const assignment = agent.agent_assignments?.[0];
+                  const superAgent = assignment?.super_agent_profiles;
+                  return (
                 <TableRow key={agent.id}>
                   <TableCell className="font-medium">{agent.full_name}</TableCell>
                   <TableCell>{agent.phone}</TableCell>
                   <TableCell>{agent.region || "N/A"}</TableCell>
+                  <TableCell>{superAgent?.full_name || "Unassigned"}</TableCell>
                   <TableCell>{formatCurrency(parseFloat(agent.total_sales || "0"))}</TableCell>
                   <TableCell>{agent.commission_rate}%</TableCell>
                   <TableCell>
@@ -93,6 +99,8 @@ export default function AgentsManagement() {
                     </Button>
                   </TableCell>
                 </TableRow>
+                  );
+                })()
               ))}
             </TableBody>
           </Table>

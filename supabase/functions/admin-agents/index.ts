@@ -12,7 +12,13 @@ serve(async (req) => {
 
     const { data: agents, error } = await supabase
       .from('agent_profiles')
-      .select('*')
+      .select(`
+        *,
+        agent_assignments!agent_id(
+          super_agent_id,
+          super_agent_profiles!super_agent_id(full_name, phone, region)
+        )
+      `)
       .order('created_at', { ascending: false })
 
     if (error) throw error

@@ -100,7 +100,7 @@ export default function FarmerDashboard() {
     phone: '',
     farmSize: '',
     farmLocation: '',
-    cropTypes: '',
+    cropTypes: [] as string[],
     idType: '',
     idNumber: '',
     guarantorName: '',
@@ -217,7 +217,7 @@ export default function FarmerDashboard() {
         headers,
         body: JSON.stringify({
           ...data,
-          cropTypes: data.cropTypes ? data.cropTypes.split(',').map(c => c.trim()).filter(c => c) : undefined,
+          cropTypes: data.cropTypes?.filter((c) => c.trim()),
         }),
       })
       if (!response.ok) {
@@ -255,7 +255,7 @@ export default function FarmerDashboard() {
         phone: profile.phone || '',
         farmSize: profile.farmSize || '',
         farmLocation: profile.farmLocation || '',
-        cropTypes: profile.cropTypes?.join(', ') || '',
+        cropTypes: profile.cropTypes || [],
         idType: profile.idType || 'national_id',
         idNumber: profile.idNumber || '',
         guarantorName: profile.guarantorName || '',

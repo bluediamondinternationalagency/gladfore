@@ -20,10 +20,11 @@ export default function ReportsAnalytics() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Complete list of all farmers with their credit status
                 </p>
-                <Button size="sm" className="w-full">
+                <Button size="sm" className="w-full" disabled title="Report export service not configured yet">
                   <Download className="w-4 h-4 mr-2" />
                   Download CSV
                 </Button>
+                <p className="text-xs text-muted-foreground mt-2">Exports coming soon</p>
               </CardContent>
             </Card>
 
@@ -34,10 +35,11 @@ export default function ReportsAnalytics() {
                 <p className="text-sm text-muted-foreground mb-4">
                   All orders with payment status and delivery info
                 </p>
-                <Button size="sm" className="w-full">
+                <Button size="sm" className="w-full" disabled title="Report export service not configured yet">
                   <Download className="w-4 h-4 mr-2" />
                   Download CSV
                 </Button>
+                <p className="text-xs text-muted-foreground mt-2">Exports coming soon</p>
               </CardContent>
             </Card>
 
@@ -48,10 +50,11 @@ export default function ReportsAnalytics() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Payment collections and outstanding balances
                 </p>
-                <Button size="sm" className="w-full">
+                <Button size="sm" className="w-full" disabled title="Report export service not configured yet">
                   <Download className="w-4 h-4 mr-2" />
                   Download CSV
                 </Button>
+                <p className="text-xs text-muted-foreground mt-2">Exports coming soon</p>
               </CardContent>
             </Card>
 
@@ -62,10 +65,11 @@ export default function ReportsAnalytics() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Agent sales, commissions, and performance metrics
                 </p>
-                <Button size="sm" className="w-full">
+                <Button size="sm" className="w-full" disabled title="Report export service not configured yet">
                   <Download className="w-4 h-4 mr-2" />
                   Download CSV
                 </Button>
+                <p className="text-xs text-muted-foreground mt-2">Exports coming soon</p>
               </CardContent>
             </Card>
           </div>

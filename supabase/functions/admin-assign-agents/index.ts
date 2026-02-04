@@ -53,25 +53,26 @@ serve(async (req) => {
 
     const { superAgentId, agentIds } = await req.json()
 
-    if (!superAgentId || !agentIds || !Array.isArray(agentIds)) {
+    if (!agentIds || !Array.isArray(agentIds) || agentIds.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Super agent ID and agent IDs array are required' }),
+        JSON.stringify({ error: 'Agent IDs array is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verify super agent exists
-    const { data: superAgent, error: superAgentError } = await supabase
-      .from('super_agent_profiles')
-      .select('user_id')
-      .eq('user_id', superAgentId)
-      .single()
+    if (superAgentId) {
+      const { data: superAgent, error: superAgentError } = await supabase
+        .from('super_agent_profiles')
+        .select('user_id')
+        .eq('user_id', superAgentId)
+        .single()
 
-    if (superAgentError || !superAgent) {
-      return new Response(
-        JSON.stringify({ error: 'Super agent not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      if (superAgentError || !superAgent) {
+        return new Response(
+          JSON.stringify({ error: 'Super agent not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Get agent user IDs from agent_profiles
@@ -97,36 +98,43 @@ serve(async (req) => {
       console.error('Delete error:', deleteError)
     }
 
-    // Create new assignments
-    const assignments = agentIds.map(agentId => ({
-      super_agent_id: superAgentId,
-      agent_id: agentId,
-    }))
+    let newAssignments: any[] | null = null
 
-    const { data: newAssignments, error: assignError } = await supabase
-      .from('agent_assignments')
-      .insert(assignments)
-      .select()
+    if (superAgentId) {
+      const assignments = agentIds.map(agentId => ({
+        super_agent_id: superAgentId,
+        agent_id: agentId,
+      }))
 
-    if (assignError) {
-      console.error('Assignment error:', assignError)
-      throw new Error('Failed to assign agents')
+      const { data, error: assignError } = await supabase
+        .from('agent_assignments')
+        .insert(assignments)
+        .select()
+
+      if (assignError) {
+        console.error('Assignment error:', assignError)
+        throw new Error('Failed to assign agents')
+      }
+
+      newAssignments = data || []
+
+      // Notify each agent
+      const notifications = agentIds.map(agentId => ({
+        user_id: agentId,
+        title: 'Assigned to Super Agent',
+        message: 'You have been assigned to a super agent. Your orders will now be reviewed by your super agent before admin approval.',
+        type: 'assignment_update',
+      }))
+
+      await supabase.from('notifications').insert(notifications)
     }
-
-    // Notify each agent
-    const notifications = agentIds.map(agentId => ({
-      user_id: agentId,
-      title: 'Assigned to Super Agent',
-      message: 'You have been assigned to a super agent. Your orders will now be reviewed by your super agent before admin approval.',
-      type: 'assignment_update',
-    }))
-
-    await supabase.from('notifications').insert(notifications)
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${agentIds.length} agent(s) assigned successfully`,
+        message: superAgentId
+          ? `${agentIds.length} agent(s) assigned successfully`
+          : `${agentIds.length} agent(s) unassigned successfully`,
         assignments: newAssignments,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

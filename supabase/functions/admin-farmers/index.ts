@@ -12,7 +12,10 @@ serve(async (req) => {
 
     const { data: farmers, error} = await supabase
       .from('farmer_profiles')
-      .select('*')
+      .select(`
+        *,
+        agent:agent_profiles!agent_id(id, full_name, phone, region)
+      `)
       .order('created_at', { ascending: false })
 
     if (error) throw error

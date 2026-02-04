@@ -130,7 +130,7 @@ export default function AgentDashboard() {
   const notifications = notificationsData?.notifications || [];
   const products = productsData?.products || [];
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   // Mutations for actions
   const createFarmerMutation = useMutation({
@@ -372,7 +372,7 @@ export default function AgentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            farmers.map((farmer) => (
+            farmers.map((farmer: any) => (
               <Card key={farmer.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -446,7 +446,7 @@ export default function AgentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            orders.map((order) => (
+            orders.map((order: any) => (
               <Card key={order.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -497,7 +497,7 @@ export default function AgentDashboard() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Items</p>
                     <div className="space-y-2">
-                      {order.items.map((item) => (
+                      {order.items.map((item: any) => (
                         <div
                           key={item.id}
                           className="flex items-center justify-between p-2 bg-muted rounded"
@@ -532,7 +532,7 @@ export default function AgentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            payments.map((payment) => (
+            payments.map((payment: any) => (
               <Card key={payment.id}>
                 <CardHeader>
                   <CardTitle>Payment #{payment.id}</CardTitle>
@@ -585,7 +585,7 @@ export default function AgentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            commissions.map((commission) => (
+            commissions.map((commission: any) => (
               <Card key={commission.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -642,7 +642,7 @@ export default function AgentDashboard() {
         <TabsContent value="notifications" className="space-y-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Notifications</h3>
-            {notifications.some(n => !n.isRead) && (
+            {notifications.some((n: any) => !n.isRead) && (
               <Button 
                 size="sm" 
                 variant="outline"
@@ -667,7 +667,7 @@ export default function AgentDashboard() {
           ) : (
             <Card>
               <CardContent className="divide-y">
-                {notifications.map((notification) => (
+                {notifications.map((notification: any) => (
                   <div
                     key={notification.id}
                     className={`py-4 ${!notification.isRead ? "bg-blue-50 dark:bg-blue-950/20" : ""}`}
@@ -727,7 +727,7 @@ export default function AgentDashboard() {
       <RecordPaymentDialog 
         open={recordPaymentOpen}
         onOpenChange={setRecordPaymentOpen}
-        orders={orders.filter(o => o.balance > 0)}
+        orders={orders.filter((o: any) => o.balance > 0)}
         onSubmit={recordPaymentMutation.mutate}
         isLoading={recordPaymentMutation.isPending}
       />
@@ -1005,7 +1005,7 @@ function CreateOrderDialog({
                 <SelectValue placeholder="Choose a farmer" />
               </SelectTrigger>
               <SelectContent>
-                {farmers.map((farmer) => (
+                {farmers.map((farmer: any) => (
                   <SelectItem key={farmer.id} value={farmer.id}>
                     {farmer.fullName} - {farmer.phone}
                   </SelectItem>
@@ -1027,7 +1027,7 @@ function CreateOrderDialog({
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map((product) => (
+                      {products.map((product: any) => (
                         <SelectItem key={product.id} value={product.id}>
                           {product.name} - ₦{product.unitPrice.toLocaleString()}
                         </SelectItem>
@@ -1185,7 +1185,7 @@ function RecordPaymentDialog({
                 <SelectValue placeholder="Choose an order with balance" />
               </SelectTrigger>
               <SelectContent>
-                {orders.map((order) => (
+                {orders.map((order: any) => (
                   <SelectItem key={order.id} value={order.id}>
                     Order #{order.id.substring(0, 8)} - {order.farmerName} (Balance: ₦{order.balance.toLocaleString()})
                   </SelectItem>

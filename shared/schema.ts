@@ -43,26 +43,6 @@ export const orders = pgTable("orders", {
   adminRejectionReason: text("admin_rejection_reason"),
 });
 
-export const orders = pgTable("orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  farmerId: varchar("farmer_id").notNull().references(() => farmers.id),
-  agentId: varchar("agent_id").notNull().references(() => users.id),
-  superAgentId: varchar("super_agent_id").references(() => users.id),
-  totalCost: decimal("total_cost", { precision: 10, scale: 2 }).notNull(),
-  downPayment: decimal("down_payment", { precision: 10, scale: 2 }).notNull(),
-  balance: decimal("balance", { precision: 10, scale: 2 }).notNull(),
-  status: orderStatusEnum("status").notNull().default("pending"),
-  comments: text("comments"),
-  dueDate: timestamp("due_date").notNull(),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  superAgentApprovedAt: timestamp("super_agent_approved_at"),
-  superAgentRejectedAt: timestamp("super_agent_rejected_at"),
-  superAgentRejectionReason: text("super_agent_rejection_reason"),
-  adminApprovedAt: timestamp("admin_approved_at"),
-  adminRejectedAt: timestamp("admin_rejected_at"),
-  adminRejectionReason: text("admin_rejection_reason"),
-});
-
 export const superAgentProfiles = pgTable("super_agent_profiles", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: uuid("user_id").notNull().unique(),

@@ -96,6 +96,25 @@ export default function SuperAgentDashboard() {
     enabled: isAuthenticated,
   });
 
+  // Fetch farmers assigned to agents
+  const { data: farmersData, isLoading: farmersLoading } = useQuery({
+    queryKey: ["superAgentFarmers"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/super-agent-farmers`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch farmers');
+      }
+      return response.json();
+    },
+    enabled: isAuthenticated,
+  });
+
   // Order action mutation
   const orderActionMutation = useMutation({
     mutationFn: async ({ orderId, action, rejectionReason }: { orderId: string; action: "approve" | "reject"; rejectionReason?: string }) => {
@@ -222,6 +241,7 @@ export default function SuperAgentDashboard() {
 
   const profile = profileData?.profile;
   const orders = ordersData?.orders || [];
+  const farmers = farmersData?.farmers || [];
   const pendingOrders = orders.filter((o: any) => !o.super_agent_approved_at && !o.super_agent_rejected_at);
   const approvedOrders = orders.filter((o: any) => o.super_agent_approved_at);
   const rejectedOrders = orders.filter((o: any) => o.super_agent_rejected_at);
@@ -294,6 +314,7 @@ export default function SuperAgentDashboard() {
           <TabsTrigger value="approved">Approved ({approvedOrders.length})</TabsTrigger>
           <TabsTrigger value="rejected">Rejected ({rejectedOrders.length})</TabsTrigger>
           <TabsTrigger value="agents">My Agents</TabsTrigger>
+          <TabsTrigger value="farmers">Farmers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -472,6 +493,52 @@ export default function SuperAgentDashboard() {
                         <TableCell>{assignment.agent_profiles?.phone || 'N/A'}</TableCell>
                         <TableCell>{assignment.agent_profiles?.region || 'N/A'}</TableCell>
                         <TableCell>{format(new Date(assignment.assigned_at), "MMM dd, yyyy")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="farmers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Farmers under Your Agents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {farmersLoading ? (
+                <p className="text-muted-foreground text-center py-8">Loading farmers...</p>
+              ) : farmers.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No farmers assigned</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>KYC</TableHead>
+                      <TableHead>Credit</TableHead>
+                      <TableHead>Outstanding</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {farmers.map((farmer: any) => (
+                      <TableRow key={farmer.id}>
+                        <TableCell className="font-medium">{farmer.fullName}</TableCell>
+                        <TableCell>{farmer.phone || 'N/A'}</TableCell>
+                        <TableCell>{farmer.farmLocation || 'N/A'}</TableCell>
+                        <TableCell>{farmer.agent?.fullName || 'Unassigned'}</TableCell>
+                        <TableCell>
+                          <Badge variant={farmer.kycStatus === 'verified' ? 'default' : farmer.kycStatus === 'rejected' ? 'destructive' : 'secondary'}>
+                            {farmer.kycStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>₦{(farmer.creditLimit || 0).toLocaleString()}</TableCell>
+                        <TableCell>₦{(farmer.outstandingBalance || 0).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

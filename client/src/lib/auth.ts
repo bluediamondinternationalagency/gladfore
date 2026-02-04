@@ -9,7 +9,7 @@ export interface User {
   id: string
   phone?: string
   email?: string
-  role: 'admin' | 'agent' | 'farmer'
+  role: 'admin' | 'agent' | 'farmer' | 'super_agent'
   name: string
 }
 
@@ -62,7 +62,7 @@ export async function login(identifier: string, password: string): Promise<User>
 export async function register(data: {
   phone: string
   password: string
-  role: 'admin' | 'agent' | 'farmer'
+  role: 'admin' | 'agent' | 'farmer' | 'super_agent'
   name: string
 }): Promise<User> {
   const formattedPhone = formatPhone(data.phone)

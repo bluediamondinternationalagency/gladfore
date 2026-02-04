@@ -8,6 +8,7 @@ export const API_BASE_URL = `${SUPABASE_URL}/functions/v1`
 export const API_ENDPOINTS = {
   adminAgents: `${API_BASE_URL}/admin-agents`,
   adminFarmers: `${API_BASE_URL}/admin-farmers`,
+  adminAssignFarmers: `${API_BASE_URL}/admin-assign-farmers`,
   adminOrders: `${API_BASE_URL}/admin-orders`,
   adminPayments: `${API_BASE_URL}/admin-payments`,
   adminStats: `${API_BASE_URL}/admin-stats`,
@@ -33,6 +34,7 @@ export const API_ENDPOINTS = {
   adminProducts: `${API_BASE_URL}/admin-products`,
   adminOrderActions: `${API_BASE_URL}/admin-order-actions`,
   markNotificationRead: `${API_BASE_URL}/mark-notification-read`,
+  superAgentFarmers: `${API_BASE_URL}/super-agent-farmers`,
 } as const
 
 // Helper to get Supabase anon key for authenticated requests

@@ -9,9 +9,10 @@ import { Users, ShoppingCart, DollarSign, FileText } from "lucide-react";
 
 interface Props {
   stats: any;
+  onNavigate?: (viewId: string) => void;
 }
 
-export default function DashboardOverview({ stats }: Props) {
+export default function DashboardOverview({ stats, onNavigate }: Props) {
   // Sample data - replace with real data from API
   const revenueData = [
     { month: "Jan", revenue: 45000 },
@@ -27,10 +28,16 @@ export default function DashboardOverview({ stats }: Props) {
     { name: "Pending", value: stats?.pendingKyc || 0, color: "#f59e0b" },
   ];
 
+  const handleNavigate = (viewId: string) => {
+    if (onNavigate) {
+      onNavigate(viewId);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm">
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
           </CardHeader>
@@ -48,7 +55,7 @@ export default function DashboardOverview({ stats }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm">
           <CardHeader>
             <CardTitle>KYC Status Distribution</CardTitle>
           </CardHeader>
@@ -76,25 +83,44 @@ export default function DashboardOverview({ stats }: Props) {
         </Card>
       </div>
 
-      <Card>
+      <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button className="h-20 flex flex-col gap-2">
+            <Button
+              className="h-20 flex flex-col gap-2 shadow-sm"
+              onClick={() => handleNavigate("kyc")}
+              disabled={!onNavigate}
+            >
               <Users className="w-6 h-6" />
               Review KYC
             </Button>
-            <Button className="h-20 flex flex-col gap-2" variant="outline">
+            <Button
+              className="h-20 flex flex-col gap-2 shadow-sm"
+              variant="outline"
+              onClick={() => handleNavigate("orders")}
+              disabled={!onNavigate}
+            >
               <ShoppingCart className="w-6 h-6" />
               Approve Orders
             </Button>
-            <Button className="h-20 flex flex-col gap-2" variant="outline">
+            <Button
+              className="h-20 flex flex-col gap-2 shadow-sm"
+              variant="outline"
+              onClick={() => handleNavigate("payments")}
+              disabled={!onNavigate}
+            >
               <DollarSign className="w-6 h-6" />
               Process Payments
             </Button>
-            <Button className="h-20 flex flex-col gap-2" variant="outline">
+            <Button
+              className="h-20 flex flex-col gap-2 shadow-sm"
+              variant="outline"
+              onClick={() => handleNavigate("reports")}
+              disabled={!onNavigate}
+            >
               <FileText className="w-6 h-6" />
               Generate Report
             </Button>

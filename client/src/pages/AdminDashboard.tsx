@@ -114,7 +114,7 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (activeView) {
       case "overview":
-        return <DashboardOverview stats={stats} />;
+        return <DashboardOverview stats={stats} onNavigate={setActiveView} />;
       case "waitlist":
         return <WaitlistManagement />;
       case "add-users":
@@ -143,16 +143,16 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-slate-50 dark:bg-gray-900">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 shadow-lg",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white/90 dark:bg-gray-800/95 backdrop-blur-xl border-r border-slate-200/60 dark:border-gray-700 transition-all duration-300 shadow-xl",
           sidebarOpen ? "w-64" : "w-0 lg:w-20"
         )}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200/60 dark:border-gray-700">
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <Avatar className="w-8 h-8">
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden"
+            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
           >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
@@ -190,10 +190,10 @@ export default function AdminDashboard() {
                       if (window.innerWidth < 1024) setSidebarOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                      "group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                       isActive
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
+                        : "text-slate-700 dark:text-gray-300 hover:bg-slate-100/80 dark:hover:bg-gray-700"
                     )}
                   >
                     <Icon className={cn("w-5 h-5 flex-shrink-0", !sidebarOpen && "lg:mx-auto")} />
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-slate-200/60 dark:border-gray-700">
           <Button
             variant="ghost"
             onClick={handleLogout}
@@ -230,42 +230,51 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <div className={cn("flex-1 flex flex-col transition-all duration-300", sidebarOpen ? "lg:ml-64" : "lg:ml-20")}>
         {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-800/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
+                aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
               >
                 <Menu className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
                   {navigationItems.find(item => item.id === activeView)?.label || "Dashboard"}
                 </h1>
                 <p className="text-sm text-muted-foreground">Gladfore Credit Management System</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="hidden sm:flex"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="hidden sm:flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveView("add-users")}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add User
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </header>
 
         {/* Stats Overview - Only show on dashboard */}
         {activeView === "overview" && (
-          <div className="p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b">
+          <div className="p-4 lg:p-6 bg-gradient-to-br from-slate-50 via-white to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b border-slate-200/60">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Farmers */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Farmers</CardTitle>
                   <Users className="h-4 w-4 text-blue-600" />
@@ -280,7 +289,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Total Agents */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
                   <UserCheck className="h-4 w-4 text-purple-600" />
@@ -292,7 +301,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Active Orders */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
                   <ShoppingCart className="h-4 w-4 text-orange-600" />
@@ -306,7 +315,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Total Revenue */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
                   <DollarSign className="h-4 w-4 text-green-600" />
@@ -325,7 +334,7 @@ export default function AdminDashboard() {
             {/* Secondary Stats Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               {/* Pending KYC */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Pending KYC</CardTitle>
                   <AlertCircle className="h-4 w-4 text-orange-500" />
@@ -339,7 +348,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Outstanding */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
                   <FileText className="h-4 w-4 text-red-600" />
@@ -353,7 +362,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Collection Rate */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-600" />
@@ -367,7 +376,7 @@ export default function AdminDashboard() {
               </Card>
 
               {/* Default Rate */}
-              <Card className="border-none shadow-sm">
+              <Card className="bg-white/80 backdrop-blur border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Default Rate</CardTitle>
                   <TrendingDown className="h-4 w-4 text-red-600" />

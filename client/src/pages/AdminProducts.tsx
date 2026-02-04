@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -230,7 +230,7 @@ function ProductDialog({
   });
 
   // Update form when product changes
-  useState(() => {
+  useEffect(() => {
     if (product) {
       setFormData({
         name: product.name || "",
@@ -252,11 +252,20 @@ function ProductDialog({
         isAvailable: true,
       });
     }
-  });
+  }, [product]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data = {
+    const data: {
+      name: string;
+      description: string;
+      category: string;
+      unitPrice: number;
+      unitMeasure: string;
+      stockQuantity: number;
+      isAvailable: boolean;
+      id?: string;
+    } = {
       ...formData,
       unitPrice: parseFloat(formData.unitPrice),
       stockQuantity: parseInt(formData.stockQuantity),
